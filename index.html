@@ -32,7 +32,7 @@
     padding: 24px 16px 48px;
   }
   header {
-    margin-bottom: 28px;
+    margin-bottom: 20px;
     padding-bottom: 20px;
     border-bottom: 2px solid var(--ink);
   }
@@ -52,6 +52,21 @@
   }
   .sub { font-size: 14px; color: var(--muted); line-height: 1.5; }
 
+  /* top-level app switcher */
+  .main-tabs {
+    display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--ink);
+    overflow-x: auto;
+  }
+  .main-tab {
+    padding: 10px 4px; margin-right: 22px; font-family: 'Spectral', Georgia, serif;
+    font-size: 16px; font-weight: 600; color: var(--faint); cursor: pointer;
+    border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color 0.15s ease;
+    white-space: nowrap;
+  }
+  .main-tab.active { color: var(--ink); border-bottom-color: var(--luigi); }
+  .view { display: none; }
+  .view.active { display: block; }
+
   .panel {
     background: #FFFFFF;
     border: 1px solid var(--line);
@@ -66,6 +81,7 @@
     color: var(--faint);
     margin-bottom: 14px;
   }
+  .panel-sub { font-size: 12px; color: var(--muted); margin: -8px 0 16px; line-height: 1.5; }
 
   .person-row { display: flex; gap: 10px; flex-wrap: wrap; }
   .person-card {
@@ -176,6 +192,7 @@
     font-family: 'IBM Plex Sans', sans-serif;
     background: #fff;
     color: var(--ink);
+    width: 100%;
   }
   .add-btn {
     border: none; border-radius: 6px; background: var(--ink); color: #fff;
@@ -219,6 +236,146 @@
   @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   .pulsing { animation: pulse-dot 1.6s ease-in-out infinite; }
 
+  /* mood tracker */
+  .person-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+  .person-tab {
+    flex: 1; text-align: center; padding: 8px 6px; border-radius: 7px;
+    border: 1.5px solid var(--line); background: #fff; cursor: pointer;
+    font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 14px;
+    color: var(--muted); transition: all 0.15s ease;
+  }
+  .person-tab.active { color: #fff; border-color: transparent; }
+
+  .rating-block { margin-bottom: 18px; }
+  .rating-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .rating-title { font-size: 13px; font-weight: 600; }
+  .rating-hint { font-size: 11px; color: var(--faint); font-family: 'IBM Plex Mono', monospace; }
+  .rating-scale { display: flex; gap: 6px; }
+  .rating-dot {
+    flex: 1; height: 34px; border-radius: 7px; border: 1.5px solid var(--line);
+    background: #fff; cursor: pointer; font-size: 15px; display: flex;
+    align-items: center; justify-content: center; transition: all 0.15s ease;
+  }
+  .rating-dot.selected { border-color: transparent; color: #fff; transform: translateY(-1px); }
+
+  .mood-result {
+    display: flex; align-items: center; gap: 14px; padding: 14px;
+    background: var(--track); border-radius: 8px; margin: 4px 0 14px;
+  }
+  .mood-score {
+    font-family: 'Spectral', Georgia, serif; font-size: 30px; font-weight: 700;
+    width: 60px; text-align: center; flex-shrink: 0;
+  }
+  .mood-label-wrap { flex: 1; }
+  .mood-word { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+  .mood-formula { font-size: 11px; color: var(--faint); font-family: 'IBM Plex Mono', monospace; }
+
+  .mini-scale { display: flex; gap: 6px; }
+  .mini-dot {
+    flex: 1; height: 30px; border-radius: 6px; border: 1.5px solid var(--line);
+    background: #fff; cursor: pointer; font-size: 13px; display: flex;
+    align-items: center; justify-content: center; transition: all 0.15s ease;
+  }
+  .mini-dot.selected { border-color: transparent; color: #fff; }
+
+  .month-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .month-title { font-family: 'Spectral', Georgia, serif; font-size: 16px; font-weight: 600; }
+  .month-avg { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted); }
+  .month-avg b { color: var(--ink); font-size: 14px; }
+
+  .filter-chips { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .chip {
+    padding: 6px 13px; border-radius: 999px; border: 1.5px solid var(--line);
+    background: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; color: var(--muted); transition: all 0.15s ease;
+  }
+  .chip.selected { color: #fff; border-color: transparent; }
+
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal-dow { font-size: 10px; text-align: center; color: var(--faint); font-family: 'IBM Plex Mono', monospace; padding-bottom: 2px; }
+  .cal-cell {
+    aspect-ratio: 1; border-radius: 6px; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; font-family: 'IBM Plex Mono', monospace;
+    position: relative;
+  }
+  .cal-cell.empty { visibility: hidden; }
+  .cal-cell.no-data { background: var(--track); color: var(--faint); }
+  .cal-cell.today { box-shadow: inset 0 0 0 1.5px var(--ink); }
+
+  .legend { display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 3px; }
+
+  .strip-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .strip-row:last-child { border-bottom: none; }
+  .strip-name { width: 56px; font-weight: 600; font-size: 13px; flex-shrink: 0; }
+  .strip-dots { display: flex; gap: 4px; flex: 1; }
+  .strip-dot { flex: 1; height: 22px; border-radius: 4px; }
+  .strip-avg { font-family: 'IBM Plex Mono', monospace; font-size: 12px; width: 32px; text-align: right; flex-shrink: 0; }
+
+  /* crew awards */
+  .award-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .award-row:last-child { border-bottom: none; }
+  .award-icon {
+    width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0; display: flex;
+    align-items: center; justify-content: center; font-size: 20px;
+  }
+  .award-body { flex: 1; }
+  .award-title { font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+  .award-detail { font-size: 12px; color: var(--muted); }
+  .award-winner {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+    padding: 3px 10px; border-radius: 999px; color: #fff; flex-shrink: 0;
+  }
+  .streak-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .streak-row:last-child { border-bottom: none; }
+  .streak-name { flex: 1; font-weight: 600; font-size: 14px; font-family: 'Spectral', Georgia, serif; }
+  .streak-flames { font-size: 15px; letter-spacing: 1px; }
+  .streak-count { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--muted); width: 64px; text-align: right; }
+
+  .hours-row { margin-bottom: 14px; }
+  .hours-top-line { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .hours-name { font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 14px; }
+  .hours-value { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; }
+  .hours-bar-track { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
+  .hours-bar-fill { height: 100%; border-radius: 3px; }
+
+  /* football bets */
+  .beer-row { margin-bottom: 14px; }
+  .beer-top-line { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .beer-name { font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .beer-value { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; }
+  .beer-champ-tag {
+    font-size: 10px; background: #F2A03D; color: #fff; padding: 2px 7px; border-radius: 999px;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600;
+  }
+  .match-card { border: 1.5px solid var(--line); border-radius: 9px; padding: 14px; margin-bottom: 12px; }
+  .match-card.settled { background: var(--track); border-color: var(--track); }
+  .match-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+  .match-teams { font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 16px; }
+  .match-meta { font-size: 11px; color: var(--faint); font-family: 'IBM Plex Mono', monospace; margin-bottom: 12px; }
+  .predict-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .predict-row { display: flex; align-items: center; gap: 8px; }
+  .predict-name { width: 56px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .score-input {
+    width: 44px; text-align: center; padding: 6px 4px; border: 1px solid var(--line);
+    border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 14px;
+  }
+  .score-sep { color: var(--faint); font-size: 13px; }
+  .predict-win-badge { font-size: 15px; }
+  .result-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .result-label { font-size: 11px; color: var(--faint); font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.06em; }
+  .result-save-btn {
+    border: none; border-radius: 6px; background: var(--ink); color: #fff; font-size: 12px;
+    font-weight: 600; padding: 6px 12px; cursor: pointer; font-family: inherit; margin-left: auto;
+  }
+  .settled-tag {
+    font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); margin-top: 10px;
+    padding-top: 10px; border-top: 1px dashed var(--line);
+  }
+  .winner-pick-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+  .winner-pick-name { width: 56px; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+
   @media (prefers-reduced-motion: reduce) {
     .bar-fill { transition: none; }
     .pulsing { animation: none; }
@@ -233,60 +390,227 @@
   <header>
     <div class="eyebrow">SHIFT REGISTER · GROUP CLOCK</div>
     <h1>The Punch Board</h1>
-    <div class="sub">Clock in, clock out, and watch the lifetime tally settle the score.</div>
+    <div class="sub">Clock in, clock out, check in on the vibe, and settle the beer bets.</div>
   </header>
 
-  <!-- Clock in/out -->
-  <section class="panel">
-    <div class="panel-label">WHO'S ON THE CLOCK</div>
-    <div class="person-row" id="person-row"></div>
-  </section>
+  <div class="main-tabs">
+    <div class="main-tab active" id="tab-time">Time Clock</div>
+    <div class="main-tab" id="tab-mood">Mood Tracker</div>
+    <div class="main-tab" id="tab-awards">Crew Awards</div>
+    <div class="main-tab" id="tab-bets">Football Bets</div>
+  </div>
 
-  <!-- Leaderboard -->
-  <section class="panel">
-    <div class="leader-header-row">
-      <div class="panel-label">LEADERBOARD</div>
-      <div class="toggle-group">
-        <button class="toggle-btn active" id="toggle-lifetime">Lifetime</button>
-        <button class="toggle-btn" id="toggle-average">Daily average</button>
-      </div>
-    </div>
-    <div id="leaderboard"></div>
-  </section>
+  <!-- ===================== TIME CLOCK ===================== -->
+  <div class="view active" id="view-time">
 
-  <!-- Manual entry -->
-  <section class="panel">
-    <div class="panel-label">LOG A PAST SHIFT</div>
-    <div class="form-row">
-      <div class="form-field">
-        <label class="form-label">Person</label>
-        <select id="manual-person">
-          <option value="Luigi">Luigi</option>
-          <option value="Juan">Juan</option>
-          <option value="Sergio">Sergio</option>
-        </select>
-      </div>
-      <div class="form-field">
-        <label class="form-label">Date</label>
-        <input type="date" id="manual-date" />
-      </div>
-      <div class="form-field">
-        <label class="form-label">Clock in</label>
-        <input type="time" id="manual-start" value="09:00" />
-      </div>
-      <div class="form-field">
-        <label class="form-label">Clock out</label>
-        <input type="time" id="manual-end" value="17:00" />
-      </div>
-    </div>
-    <button class="add-btn" id="add-shift-btn">Add shift</button>
-  </section>
+    <section class="panel">
+      <div class="panel-label">WHO'S ON THE CLOCK</div>
+      <div class="person-row" id="person-row"></div>
+    </section>
 
-  <!-- Recent log -->
-  <section class="panel">
-    <div class="panel-label">RECENT PUNCHES</div>
-    <div id="recent-log"></div>
-  </section>
+    <section class="panel">
+      <div class="leader-header-row">
+        <div class="panel-label">LEADERBOARD</div>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="toggle-lifetime">Lifetime</button>
+          <button class="toggle-btn" id="toggle-average">Daily average</button>
+        </div>
+      </div>
+      <div id="leaderboard"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">HOURS LOGGED THIS MONTH</div>
+      <div class="panel-sub">Feeds the Grind Mode award on the Crew Awards tab.</div>
+      <div id="hours-summary"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">LOG A PAST SHIFT</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Person</label>
+          <select id="manual-person">
+            <option value="Luigi">Luigi</option>
+            <option value="Juan">Juan</option>
+            <option value="Sergio">Sergio</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Date</label>
+          <input type="date" id="manual-date" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">Clock in</label>
+          <input type="time" id="manual-start" value="09:00" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">Clock out</label>
+          <input type="time" id="manual-end" value="17:00" />
+        </div>
+      </div>
+      <button class="add-btn" id="add-shift-btn">Add shift</button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">RECENT PUNCHES</div>
+      <div id="recent-log"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== MOOD TRACKER ===================== -->
+  <div class="view" id="view-mood">
+
+    <section class="panel">
+      <div class="panel-label">TODAY'S CHECK-IN</div>
+      <div class="person-tabs" id="mood-person-tabs"></div>
+
+      <div class="rating-block">
+        <div class="rating-head"><span class="rating-title">Energy</span><span class="rating-hint">wiped out → wired</span></div>
+        <div class="rating-scale" id="scale-energy"></div>
+      </div>
+      <div class="rating-block">
+        <div class="rating-head"><span class="rating-title">Stress</span><span class="rating-hint">calm → frazzled</span></div>
+        <div class="rating-scale" id="scale-stress"></div>
+      </div>
+      <div class="rating-block">
+        <div class="rating-head"><span class="rating-title">Happiness</span><span class="rating-hint">rough → great</span></div>
+        <div class="rating-scale" id="scale-happiness"></div>
+      </div>
+
+      <div class="mood-result">
+        <div class="mood-score" id="mood-score">—</div>
+        <div class="mood-label-wrap">
+          <div class="mood-word" id="mood-word">Rate all three to see today's mood</div>
+          <div class="mood-formula">avg(energy, happiness, 6 − stress)</div>
+        </div>
+      </div>
+      <button class="add-btn" id="save-checkin-btn">Save today's check-in</button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">LOG A PAST DAY</div>
+      <div class="panel-sub">Forgot yesterday? Log it here — same three ratings, any date.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Person</label>
+          <select id="backfill-person">
+            <option>Luigi</option><option>Juan</option><option>Sergio</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Date</label>
+          <input type="date" id="backfill-date" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Energy</label>
+          <div class="mini-scale" id="mini-energy"></div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Stress</label>
+          <div class="mini-scale" id="mini-stress"></div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Happiness</label>
+          <div class="mini-scale" id="mini-happiness"></div>
+        </div>
+      </div>
+      <button class="add-btn" id="backfill-btn">Save day</button>
+    </section>
+
+    <section class="panel">
+      <div class="month-header-row">
+        <div class="month-title" id="cal-month-title">—</div>
+        <div class="month-avg">Shown avg: <b id="cal-avg">—</b> / 5</div>
+      </div>
+      <div class="panel-sub">Pick one, two, or all three — the calendar averages whoever's selected, per day.</div>
+      <div class="filter-chips" id="filter-chips"></div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:#E0503C"></span> Rough</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#F2A03D"></span> Okay</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#8FBF5C"></span> Good</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#2E9B5C"></span> Great</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#F0EBE1"></span> No check-in</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">LAST 7 DAYS · WHOLE CREW</div>
+      <div id="strip-list"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== CREW AWARDS ===================== -->
+  <div class="view" id="view-awards">
+    <section class="panel">
+      <div class="panel-label">THIS MONTH'S SUPERLATIVES</div>
+      <div class="panel-sub">Computed automatically from everyone's check-ins and punches.</div>
+      <div id="awards-list"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-label">CHECK-IN STREAKS</div>
+      <div class="panel-sub">Consecutive days logged, ending today.</div>
+      <div id="streak-list"></div>
+    </section>
+  </div>
+
+  <!-- ===================== FOOTBALL BETS ===================== -->
+  <div class="view" id="view-bets">
+
+    <section class="panel">
+      <div class="panel-label">BEER SCOREBOARD</div>
+      <div class="panel-sub">One round of beers per exact score guessed correctly. The World Cup winner guess alone is worth a full day of free beers.</div>
+      <div id="bets-scoreboard"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">MATCHES · GUESS THE SCORE</div>
+      <div class="panel-sub">Not just who wins — the exact final score. Enter the real result once the match ends.</div>
+      <div id="match-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">ADD A MATCH</div>
+      <div class="panel-sub">For the semis, final, or anything else worth a bet.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Team A</label>
+          <input type="text" id="new-match-teamA" placeholder="e.g. France" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">Team B</label>
+          <input type="text" id="new-match-teamB" placeholder="e.g. Morocco" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Date / round</label>
+          <input type="text" id="new-match-date" placeholder="e.g. Semifinal, Jul 15" />
+        </div>
+      </div>
+      <button class="add-btn" id="add-match-btn">Add match</button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">GUESS THE WORLD CUP WINNER</div>
+      <div class="panel-sub">Worth a full day of free beers. Enter the real winner once the final's done.</div>
+      <div id="winner-predict"></div>
+      <div class="form-row" style="margin-top:6px;">
+        <div class="form-field">
+          <label class="form-label">Actual World Cup winner</label>
+          <input type="text" id="actual-winner-input" placeholder="Enter once the final is played" />
+        </div>
+      </div>
+      <button class="add-btn" id="save-winner-btn">Save winner</button>
+      <div id="winner-result" style="margin-top:10px; font-size:13px; color: var(--muted);"></div>
+    </section>
+
+  </div>
 
   <footer>Shared with Luigi, Juan &amp; Sergio · data is stored in a shared Google Sheet</footer>
 </div>
@@ -294,139 +618,145 @@
 <script>
 /* =========================================================================
    CONFIG — paste your Apps Script Web App URL below between the quotes.
-   Example: 'https://script.google.com/macros/s/AKfycby.../exec'
    ========================================================================= */
 const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwBOJ6qBRgltHYwgvQCzKDHRu0Ezy2plaV4eQVTaxGlqovIO89wEOv7QPzg4gngqcsD/exec';
 
 const PEOPLE = ['Luigi', 'Juan', 'Sergio'];
 const COLORS = { Luigi: '#D97757', Juan: '#4A7C7C', Sergio: '#8B6F47' };
-
-// Active shifts are stored locally per-browser (see note in config banner).
 const ACTIVE_SHIFTS_KEY = 'punchboard-active-shifts';
 
+/* ---------------------------------------------------------------------
+   Shared state (populated from one combined GET call)
+   --------------------------------------------------------------------- */
 let entries = [];
+let moodEntries = [];
+let matches = [];
+let predictions = [];      // [{matchId, person, scoreA, scoreB}]
+let winnerPicks = [];      // [{person, prediction}]
+let settings = {};         // {baseBeers_Luigi, baseBeers_Juan, baseBeers_Sergio, actualWinner}
+
 let activeShifts = JSON.parse(localStorage.getItem(ACTIVE_SHIFTS_KEY) || '{}');
 let viewMode = 'lifetime';
 
+/* mood check-in state */
+let moodPerson = 'Luigi';
+let ratings = { energy: null, stress: null, happiness: null };
+let backfillRatings = { energy: null, stress: null, happiness: null };
+let moodFilters = new Set(PEOPLE);
+let calMonthOffset = 0; // 0 = current month
+
+/* ---------------------------------------------------------------------
+   Formatting helpers
+   --------------------------------------------------------------------- */
 function formatDuration(hoursDecimal) {
   const totalMinutes = Math.round(hoursDecimal * 60);
   const h = Math.floor(totalMinutes / 60);
   const m = totalMinutes % 60;
   return `${h}h ${String(m).padStart(2, '0')}m`;
 }
-function formatClock(date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function formatClock(date) { return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+function formatDate(date) { return date.toLocaleDateString([], { day: '2-digit', month: 'short' }); }
+function todayISO() { return new Date().toISOString().slice(0, 10); }
+function moodColor(score) {
+  if (score === null || score === undefined) return '#F0EBE1';
+  if (score < 2) return '#E0503C';
+  if (score < 3) return '#F2A03D';
+  if (score < 4) return '#8FBF5C';
+  return '#2E9B5C';
 }
-function formatDate(date) {
-  return date.toLocaleDateString([], { day: '2-digit', month: 'short' });
+function moodWord(score) {
+  if (score < 2) return 'Rough day';
+  if (score < 3) return 'Okay day';
+  if (score < 4) return 'Good day';
+  return 'Great day';
 }
 
-async function apiGet() {
+/* ---------------------------------------------------------------------
+   API layer — one GET returns everything; POST is action-routed
+   --------------------------------------------------------------------- */
+async function apiGetAll() {
   const res = await fetch(WEB_APP_URL);
-  const data = await res.json();
-  return data.entries || [];
+  return await res.json();
 }
-async function apiAdd(entry) {
-  await fetch(WEB_APP_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'add', entry }),
-  });
+async function apiPost(payload) {
+  await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
 }
-async function apiDelete(id) {
-  await fetch(WEB_APP_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'delete', id }),
-  });
-}
+async function apiAddEntry(entry) { await apiPost({ action: 'add', entry }); }
+async function apiDeleteEntry(id) { await apiPost({ action: 'delete', id }); }
+async function apiAddMood(entry) { await apiPost({ action: 'addMood', entry }); }
+async function apiDeleteMood(id) { await apiPost({ action: 'deleteMood', id }); }
+async function apiAddMatch(match) { await apiPost({ action: 'addMatch', match }); }
+async function apiSetMatchResult(matchId, resultA, resultB) { await apiPost({ action: 'setMatchResult', matchId, resultA, resultB }); }
+async function apiSetPrediction(matchId, person, scoreA, scoreB) { await apiPost({ action: 'setPrediction', matchId, person, scoreA, scoreB }); }
+async function apiSetWinnerPick(person, prediction) { await apiPost({ action: 'setWinnerPick', person, prediction }); }
+async function apiSetSetting(key, value) { await apiPost({ action: 'setSetting', key, value }); }
 
-function saveActiveShifts() {
-  localStorage.setItem(ACTIVE_SHIFTS_KEY, JSON.stringify(activeShifts));
-}
+function saveActiveShifts() { localStorage.setItem(ACTIVE_SHIFTS_KEY, JSON.stringify(activeShifts)); }
 
 async function loadData() {
   try {
-    entries = await apiGet();
+    const data = await apiGetAll();
+    entries = data.entries || [];
+    moodEntries = data.moodEntries || [];
+    matches = data.matches || [];
+    predictions = data.predictions || [];
+    winnerPicks = data.winnerPicks || [];
+    settings = data.settings || {};
   } catch (e) {
-    console.error('Failed to load entries', e);
-    entries = [];
+    console.error('Failed to load data', e);
   }
-  render();
+  renderTimeTab();
+  renderMoodTab();
+  // Awards and Bets render on tab activation (cheap enough to always keep fresh too)
+  renderAwardsTab();
+  renderBetsTab();
 }
 
+/* =========================================================================
+   TIME CLOCK (logic unchanged from the original app)
+   ========================================================================= */
 async function clockIn(person) {
   activeShifts[person] = new Date().toISOString();
   saveActiveShifts();
-  render();
+  renderPersonRow();
 }
-
 async function clockOut(person) {
   const startIso = activeShifts[person];
   if (!startIso) return;
   const start = new Date(startIso);
   const end = new Date();
   const hours = (end - start) / (1000 * 60 * 60);
-
   delete activeShifts[person];
   saveActiveShifts();
-
   if (hours > 0) {
-    const entry = {
-      id: `${person}-${end.getTime()}`,
-      person,
-      start: start.toISOString(),
-      end: end.toISOString(),
-      hours,
-    };
+    const entry = { id: `${person}-${end.getTime()}`, person, start: start.toISOString(), end: end.toISOString(), hours };
     entries.unshift(entry);
-    render();
-    try {
-      await apiAdd(entry);
-    } catch (e) {
-      console.error('Failed to save entry', e);
-    }
+    renderTimeTab();
+    try { await apiAddEntry(entry); } catch (e) { console.error('Failed to save entry', e); }
   } else {
-    render();
+    renderPersonRow();
   }
 }
-
 async function addManualEntry() {
   const person = document.getElementById('manual-person').value;
   const date = document.getElementById('manual-date').value;
   const startStr = document.getElementById('manual-start').value;
   const endStr = document.getElementById('manual-end').value;
   if (!date || !startStr || !endStr) return;
-
   const start = new Date(`${date}T${startStr}:00`);
   const end = new Date(`${date}T${endStr}:00`);
   let hours = (end - start) / (1000 * 60 * 60);
   if (hours <= 0) hours += 24;
-
-  const entry = {
-    id: `${person}-${Date.now()}`,
-    person,
-    start: start.toISOString(),
-    end: end.toISOString(),
-    hours,
-  };
+  const entry = { id: `${person}-${Date.now()}`, person, start: start.toISOString(), end: end.toISOString(), hours };
   entries.unshift(entry);
-  render();
-  try {
-    await apiAdd(entry);
-  } catch (e) {
-    console.error('Failed to save entry', e);
-  }
+  renderTimeTab();
+  try { await apiAddEntry(entry); } catch (e) { console.error('Failed to save entry', e); }
 }
-
 async function deleteEntry(id) {
   entries = entries.filter((e) => e.id !== id);
-  render();
-  try {
-    await apiDelete(id);
-  } catch (e) {
-    console.error('Failed to delete entry', e);
-  }
+  renderTimeTab();
+  try { await apiDeleteEntry(id); } catch (e) { console.error('Failed to delete entry', e); }
 }
-
 function computeStats() {
   return PEOPLE.map((person) => {
     const personEntries = entries.filter((e) => e.person === person);
@@ -436,7 +766,6 @@ function computeStats() {
     return { person, totalHours, avgHours, shifts: personEntries.length, days };
   });
 }
-
 function renderPersonRow() {
   const now = new Date();
   const container = document.getElementById('person-row');
@@ -464,13 +793,11 @@ function renderPersonRow() {
       info.className = 'shift-info';
       info.textContent = `In since ${formatClock(new Date(shiftStart))}`;
       card.appendChild(info);
-
       const elapsed = document.createElement('div');
       elapsed.className = 'shift-elapsed';
       elapsed.style.color = COLORS[person];
       elapsed.textContent = formatDuration(elapsedHours);
       card.appendChild(elapsed);
-
       const btn = document.createElement('button');
       btn.className = 'action-btn';
       btn.style.background = COLORS[person];
@@ -482,7 +809,6 @@ function renderPersonRow() {
       info.className = 'shift-info';
       info.textContent = 'Not clocked in';
       card.appendChild(info);
-
       const btn = document.createElement('button');
       btn.className = 'action-btn';
       btn.style.background = '#2B2823';
@@ -490,21 +816,15 @@ function renderPersonRow() {
       btn.onclick = () => clockIn(person);
       card.appendChild(btn);
     }
-
     container.appendChild(card);
   });
 }
-
 function renderLeaderboard() {
   const stats = computeStats();
-  const sorted = [...stats].sort((a, b) =>
-    viewMode === 'lifetime' ? b.totalHours - a.totalHours : b.avgHours - a.avgHours
-  );
+  const sorted = [...stats].sort((a, b) => viewMode === 'lifetime' ? b.totalHours - a.totalHours : b.avgHours - a.avgHours);
   const maxValue = Math.max(1, ...sorted.map((s) => (viewMode === 'lifetime' ? s.totalHours : s.avgHours)));
-
   const container = document.getElementById('leaderboard');
   container.innerHTML = '';
-
   if (sorted.every((s) => s.shifts === 0)) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
@@ -512,25 +832,19 @@ function renderLeaderboard() {
     container.appendChild(empty);
     return;
   }
-
   const list = document.createElement('div');
   list.className = 'leaderboard-list';
-
   sorted.forEach((s, idx) => {
     const value = viewMode === 'lifetime' ? s.totalHours : s.avgHours;
     const pct = (value / maxValue) * 100;
-
     const row = document.createElement('div');
     row.className = 'leader-row';
-
     const rank = document.createElement('div');
     rank.className = 'leader-rank';
     rank.textContent = idx + 1;
     row.appendChild(rank);
-
     const main = document.createElement('div');
     main.className = 'leader-main';
-
     const topLine = document.createElement('div');
     topLine.className = 'leader-top-line';
     const name = document.createElement('span');
@@ -548,7 +862,6 @@ function renderLeaderboard() {
     topLine.appendChild(name);
     topLine.appendChild(val);
     main.appendChild(topLine);
-
     const track = document.createElement('div');
     track.className = 'bar-track';
     const fill = document.createElement('div');
@@ -557,24 +870,19 @@ function renderLeaderboard() {
     fill.style.background = COLORS[s.person];
     track.appendChild(fill);
     main.appendChild(track);
-
     const meta = document.createElement('div');
     meta.className = 'leader-meta';
     meta.textContent = `${s.shifts} shift${s.shifts !== 1 ? 's' : ''} · ${s.days} day${s.days !== 1 ? 's' : ''} logged`;
     main.appendChild(meta);
-
     row.appendChild(main);
     list.appendChild(row);
   });
-
   container.appendChild(list);
 }
-
 function renderRecentLog() {
   const recent = [...entries].sort((a, b) => new Date(b.start) - new Date(a.start)).slice(0, 12);
   const container = document.getElementById('recent-log');
   container.innerHTML = '';
-
   if (recent.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
@@ -582,56 +890,85 @@ function renderRecentLog() {
     container.appendChild(empty);
     return;
   }
-
   const list = document.createElement('div');
   list.className = 'log-list';
-
   recent.forEach((e) => {
     const row = document.createElement('div');
     row.className = 'log-row';
-
     const dot = document.createElement('span');
     dot.className = 'log-dot';
     dot.style.background = COLORS[e.person];
     row.appendChild(dot);
-
     const person = document.createElement('span');
     person.className = 'log-person';
     person.textContent = e.person;
     row.appendChild(person);
-
     const date = document.createElement('span');
     date.className = 'log-date';
     date.textContent = formatDate(new Date(e.start));
     row.appendChild(date);
-
     const times = document.createElement('span');
     times.className = 'log-times';
     times.textContent = `${formatClock(new Date(e.start))} – ${formatClock(new Date(e.end))}`;
     row.appendChild(times);
-
     const dur = document.createElement('span');
     dur.className = 'log-duration';
     dur.textContent = formatDuration(e.hours);
     row.appendChild(dur);
-
     const del = document.createElement('button');
     del.className = 'delete-btn';
     del.textContent = '✕';
     del.title = 'Remove this entry';
     del.onclick = () => deleteEntry(e.id);
     row.appendChild(del);
-
     list.appendChild(row);
   });
-
   container.appendChild(list);
 }
-
-function render() {
+function renderHoursSummary() {
+  const wrap = document.getElementById('hours-summary');
+  wrap.innerHTML = '';
+  const now = new Date();
+  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const totals = PEOPLE.map(p =>
+    entries.filter(e => e.person === p && e.start.slice(0, 7) === monthPrefix)
+      .reduce((sum, e) => sum + e.hours, 0)
+  );
+  const maxTotal = Math.max(1, ...totals);
+  if (totals.every(t => t === 0)) {
+    wrap.innerHTML = '<div class="empty-state">No hours logged this month yet.</div>';
+    return;
+  }
+  PEOPLE.forEach((p, i) => {
+    const total = totals[i];
+    const row = document.createElement('div');
+    row.className = 'hours-row';
+    const top = document.createElement('div');
+    top.className = 'hours-top-line';
+    const name = document.createElement('span');
+    name.className = 'hours-name';
+    name.textContent = p;
+    const val = document.createElement('span');
+    val.className = 'hours-value';
+    val.textContent = `${total.toFixed(1)}h`;
+    top.appendChild(name); top.appendChild(val);
+    row.appendChild(top);
+    const track = document.createElement('div');
+    track.className = 'hours-bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'hours-bar-fill';
+    fill.style.width = `${(total / maxTotal) * 100}%`;
+    fill.style.background = COLORS[p];
+    track.appendChild(fill);
+    row.appendChild(track);
+    wrap.appendChild(row);
+  });
+}
+function renderTimeTab() {
   renderPersonRow();
   renderLeaderboard();
   renderRecentLog();
+  renderHoursSummary();
 }
 
 document.getElementById('toggle-lifetime').onclick = () => {
@@ -647,14 +984,655 @@ document.getElementById('toggle-average').onclick = () => {
   renderLeaderboard();
 };
 document.getElementById('add-shift-btn').onclick = addManualEntry;
-
-// default manual date to today
-document.getElementById('manual-date').value = new Date().toISOString().slice(0, 10);
-
-// tick the active-shift timers every 30s
+document.getElementById('manual-date').value = todayISO();
 setInterval(renderPersonRow, 30000);
 
-// config check
+/* =========================================================================
+   MOOD TRACKER
+   ========================================================================= */
+function personMoodMap(person) {
+  // most recent entry wins per date
+  const map = {};
+  moodEntries.filter(m => m.person === person).forEach(m => {
+    const score = (m.energy + m.happiness + (6 - m.stress)) / 3;
+    map[m.date] = score;
+  });
+  return map;
+}
+function findMoodEntry(person, date) {
+  const matches = moodEntries.filter(m => m.person === person && m.date === date);
+  return matches.length ? matches[matches.length - 1] : null;
+}
+
+function renderMoodPersonTabs() {
+  const wrap = document.getElementById('mood-person-tabs');
+  wrap.innerHTML = '';
+  PEOPLE.forEach(p => {
+    const tab = document.createElement('div');
+    tab.className = 'person-tab' + (p === moodPerson ? ' active' : '');
+    tab.textContent = p;
+    tab.style.background = p === moodPerson ? COLORS[p] : '#fff';
+    tab.style.borderColor = p === moodPerson ? COLORS[p] : 'var(--line)';
+    tab.onclick = () => {
+      moodPerson = p;
+      const existing = findMoodEntry(p, todayISO());
+      ratings = existing
+        ? { energy: existing.energy, stress: existing.stress, happiness: existing.happiness }
+        : { energy: null, stress: null, happiness: null };
+      renderCheckin();
+    };
+    wrap.appendChild(tab);
+  });
+}
+function renderScale(key, containerId) {
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'rating-dot' + (ratings[key] === i ? ' selected' : '');
+    dot.textContent = i;
+    if (ratings[key] === i) dot.style.background = COLORS[moodPerson];
+    dot.onclick = () => { ratings[key] = i; renderCheckin(); };
+    wrap.appendChild(dot);
+  }
+}
+function renderMoodResult() {
+  const { energy, stress, happiness } = ratings;
+  const scoreEl = document.getElementById('mood-score');
+  const wordEl = document.getElementById('mood-word');
+  if (energy === null || stress === null || happiness === null) {
+    scoreEl.textContent = '—'; scoreEl.style.color = 'var(--faint)';
+    wordEl.textContent = 'Rate all three to see today\'s mood';
+    return;
+  }
+  const avg = (energy + happiness + (6 - stress)) / 3;
+  scoreEl.textContent = avg.toFixed(1);
+  scoreEl.style.color = COLORS[moodPerson];
+  wordEl.textContent = `${moodWord(avg)} for ${moodPerson}`;
+}
+function renderCheckin() {
+  renderMoodPersonTabs();
+  renderScale('energy', 'scale-energy');
+  renderScale('stress', 'scale-stress');
+  renderScale('happiness', 'scale-happiness');
+  renderMoodResult();
+}
+document.getElementById('save-checkin-btn').onclick = async () => {
+  const { energy, stress, happiness } = ratings;
+  if (energy === null || stress === null || happiness === null) {
+    alert('Rate energy, stress, and happiness first.');
+    return;
+  }
+  const date = todayISO();
+  const existing = findMoodEntry(moodPerson, date);
+  if (existing) {
+    moodEntries = moodEntries.filter(m => m.id !== existing.id);
+    try { await apiDeleteMood(existing.id); } catch (e) { console.error(e); }
+  }
+  const entry = { id: `${moodPerson}-${date}-${Date.now()}`, person: moodPerson, date, energy, stress, happiness };
+  moodEntries.push(entry);
+  renderMoodTab();
+  try { await apiAddMood(entry); } catch (e) { console.error('Failed to save mood', e); }
+};
+
+function renderMini(key, containerId) {
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'mini-dot' + (backfillRatings[key] === i ? ' selected' : '');
+    dot.textContent = i;
+    if (backfillRatings[key] === i) dot.style.background = '#2B2823';
+    dot.onclick = () => { backfillRatings[key] = i; renderMini(key, containerId); };
+    wrap.appendChild(dot);
+  }
+}
+document.getElementById('backfill-btn').onclick = async () => {
+  const p = document.getElementById('backfill-person').value;
+  const d = document.getElementById('backfill-date').value;
+  const { energy, stress, happiness } = backfillRatings;
+  if (!d || energy === null || stress === null || happiness === null) {
+    alert('Pick a date and all three ratings first.');
+    return;
+  }
+  const existing = findMoodEntry(p, d);
+  if (existing) {
+    moodEntries = moodEntries.filter(m => m.id !== existing.id);
+    try { await apiDeleteMood(existing.id); } catch (e) { console.error(e); }
+  }
+  const entry = { id: `${p}-${d}-${Date.now()}`, person: p, date: d, energy, stress, happiness };
+  moodEntries.push(entry);
+  backfillRatings = { energy: null, stress: null, happiness: null };
+  renderMini('energy', 'mini-energy');
+  renderMini('stress', 'mini-stress');
+  renderMini('happiness', 'mini-happiness');
+  renderMoodTab();
+  try { await apiAddMood(entry); } catch (e) { console.error('Failed to save mood', e); }
+};
+
+function renderMoodFilterChips() {
+  const wrap = document.getElementById('filter-chips');
+  wrap.innerHTML = '';
+  PEOPLE.forEach(p => {
+    const chip = document.createElement('div');
+    const selected = moodFilters.has(p);
+    chip.className = 'chip' + (selected ? ' selected' : '');
+    chip.textContent = p;
+    chip.style.background = selected ? COLORS[p] : '#fff';
+    chip.style.borderColor = selected ? COLORS[p] : 'var(--line)';
+    chip.onclick = () => {
+      if (moodFilters.has(p)) {
+        if (moodFilters.size > 1) moodFilters.delete(p);
+      } else {
+        moodFilters.add(p);
+      }
+      renderMoodFilterChips();
+      renderCalendar();
+    };
+    wrap.appendChild(chip);
+  });
+}
+function renderCalendar() {
+  const now = new Date();
+  const viewDate = new Date(now.getFullYear(), now.getMonth() + calMonthOffset, 1);
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  document.getElementById('cal-month-title').textContent =
+    viewDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  ['S','M','T','W','T','F','S'].forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-dow';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayStr = todayISO();
+  const selected = [...moodFilters];
+  const maps = {};
+  selected.forEach(p => { maps[p] = personMoodMap(p); });
+
+  for (let i = 0; i < firstDow; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-cell empty';
+    grid.appendChild(el);
+  }
+
+  const monthAverages = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const vals = selected.map(p => maps[p][dateStr]).filter(v => v !== undefined);
+    const val = vals.length > 0 ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+    if (val !== null) monthAverages.push(val);
+    const el = document.createElement('div');
+    el.className = 'cal-cell' + (val === null ? ' no-data' : '') + (dateStr === todayStr ? ' today' : '');
+    el.style.background = moodColor(val);
+    el.style.color = val === null ? 'var(--faint)' : 'rgba(255,255,255,0.95)';
+    el.style.fontWeight = val === null ? '400' : '600';
+    el.textContent = d;
+    grid.appendChild(el);
+  }
+  const avgEl = document.getElementById('cal-avg');
+  avgEl.textContent = monthAverages.length
+    ? (monthAverages.reduce((a,b) => a+b, 0) / monthAverages.length).toFixed(1)
+    : '—';
+}
+function renderStrip() {
+  const wrap = document.getElementById('strip-list');
+  wrap.innerHTML = '';
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  PEOPLE.forEach(p => {
+    const map = personMoodMap(p);
+    const row = document.createElement('div');
+    row.className = 'strip-row';
+    const name = document.createElement('div');
+    name.className = 'strip-name';
+    name.textContent = p;
+    row.appendChild(name);
+    const dots = document.createElement('div');
+    dots.className = 'strip-dots';
+    const weekVals = [];
+    days.forEach(dateStr => {
+      const v = map[dateStr];
+      if (v !== undefined) weekVals.push(v);
+      const dot = document.createElement('div');
+      dot.className = 'strip-dot';
+      dot.style.background = moodColor(v === undefined ? null : v);
+      dots.appendChild(dot);
+    });
+    row.appendChild(dots);
+    const avgEl = document.createElement('div');
+    avgEl.className = 'strip-avg';
+    avgEl.textContent = weekVals.length ? (weekVals.reduce((a,b)=>a+b,0)/weekVals.length).toFixed(1) : '—';
+    row.appendChild(avgEl);
+    wrap.appendChild(row);
+  });
+}
+function renderMoodTab() {
+  renderCheckin();
+  renderMoodFilterChips();
+  renderCalendar();
+  renderStrip();
+}
+
+/* =========================================================================
+   CREW AWARDS
+   ========================================================================= */
+function personMoodStats(p) {
+  const map = personMoodMap(p);
+  const dates = Object.keys(map).sort();
+  const values = dates.map(d => map[d]);
+  if (values.length === 0) return { avg: null, stdev: null, biggestJump: 0, jumpDesc: '' };
+  const avg = values.reduce((a,b) => a+b, 0) / values.length;
+  const variance = values.reduce((a,b) => a + Math.pow(b - avg, 2), 0) / values.length;
+  const stdev = Math.sqrt(variance);
+  let biggestJump = 0, jumpDesc = '';
+  for (let i = 1; i < dates.length; i++) {
+    const prev = new Date(dates[i-1]), cur = new Date(dates[i]);
+    const dayGap = Math.round((cur - prev) / 86400000);
+    if (dayGap === 1) {
+      const diff = map[dates[i]] - map[dates[i-1]];
+      if (Math.abs(diff) > Math.abs(biggestJump)) {
+        biggestJump = diff;
+        jumpDesc = `${dates[i-1]} → ${dates[i]}`;
+      }
+    }
+  }
+  return { avg, stdev, biggestJump, jumpDesc };
+}
+function personCrossStats(p) {
+  const now = new Date();
+  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const hoursByDay = {};
+  entries.filter(e => e.person === p && e.start.slice(0,7) === monthPrefix).forEach(e => {
+    const day = e.start.slice(0, 10);
+    hoursByDay[day] = (hoursByDay[day] || 0) + e.hours;
+  });
+  const totalHours = Object.values(hoursByDay).reduce((a,b) => a+b, 0);
+  const moodMap = personMoodMap(p);
+
+  const highHourMoods = Object.keys(hoursByDay)
+    .filter(d => hoursByDay[d] >= 8 && moodMap[d] !== undefined)
+    .map(d => moodMap[d]);
+  const highHourAvg = highHourMoods.length ? highHourMoods.reduce((a,b)=>a+b,0) / highHourMoods.length : null;
+
+  const dayOffMoods = Object.keys(moodMap)
+    .filter(d => d.slice(0,7) === monthPrefix && !hoursByDay[d])
+    .map(d => moodMap[d]);
+  const bestDayOff = dayOffMoods.length ? Math.max(...dayOffMoods) : null;
+
+  return { totalHours, highHourAvg, bestDayOff };
+}
+function renderAwardsList() {
+  const wrap = document.getElementById('awards-list');
+  wrap.innerHTML = '';
+  const stats = {}, cross = {};
+  PEOPLE.forEach(p => { stats[p] = personMoodStats(p); cross[p] = personCrossStats(p); });
+
+  const withMood = PEOPLE.filter(p => stats[p].avg !== null);
+  if (withMood.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No mood check-ins yet this month — awards will appear once everyone starts logging.</div>';
+    return;
+  }
+  const topVibes = withMood.reduce((a,b) => stats[a].avg > stats[b].avg ? a : b);
+  const mostConsistent = withMood.reduce((a,b) => stats[a].stdev < stats[b].stdev ? a : b);
+  const withJump = withMood.filter(p => stats[p].jumpDesc);
+  const biggestGlowUp = withJump.length ? withJump.reduce((a,b) => Math.abs(stats[a].biggestJump) > Math.abs(stats[b].biggestJump) ? a : b) : null;
+
+  const withHours = PEOPLE.filter(p => cross[p].totalHours > 0);
+  const grindMode = withHours.length ? withHours.reduce((a,b) => cross[a].totalHours > cross[b].totalHours ? a : b) : null;
+  const withHighHour = PEOPLE.filter(p => cross[p].highHourAvg !== null);
+  const ironWill = withHighHour.length ? withHighHour.reduce((a,b) => cross[a].highHourAvg > cross[b].highHourAvg ? a : b) : null;
+  const withDayOff = PEOPLE.filter(p => cross[p].bestDayOff !== null);
+  const bestDayOffPerson = withDayOff.length ? withDayOff.reduce((a,b) => cross[a].bestDayOff > cross[b].bestDayOff ? a : b) : null;
+
+  const awards = [
+    { icon: '🏆', bg: '#F2A03D', title: 'Top Vibes', detail: `Highest average mood this month — ${stats[topVibes].avg.toFixed(1)} / 5`, winner: topVibes },
+    { icon: '🧘', bg: '#4A7C7C', title: 'Steadiest Ship', detail: 'Least day-to-day swing in mood', winner: mostConsistent },
+  ];
+  if (biggestGlowUp) awards.push({ icon: '📈', bg: '#2E9B5C', title: 'Biggest Glow-Up', detail: `Sharpest overnight turnaround (${stats[biggestGlowUp].jumpDesc})`, winner: biggestGlowUp });
+  if (grindMode) awards.push({ icon: '💪', bg: '#D97757', title: 'Grind Mode', detail: `Most hours punched this month — ${cross[grindMode].totalHours.toFixed(1)}h total`, winner: grindMode });
+  if (ironWill) awards.push({ icon: '⚖️', bg: '#8B6F47', title: 'Iron Will', detail: `Kept mood highest (avg ${cross[ironWill].highHourAvg.toFixed(1)}) on their own longest shifts (8h+)`, winner: ironWill });
+  if (bestDayOffPerson) awards.push({ icon: '🌅', bg: '#F2A03D', title: 'Best Day Off', detail: `Highest mood logged on a day with no shift — ${cross[bestDayOffPerson].bestDayOff.toFixed(1)} / 5`, winner: bestDayOffPerson });
+
+  awards.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'award-row';
+    const icon = document.createElement('div');
+    icon.className = 'award-icon';
+    icon.style.background = a.bg + '22';
+    icon.textContent = a.icon;
+    row.appendChild(icon);
+    const body = document.createElement('div');
+    body.className = 'award-body';
+    const title = document.createElement('div');
+    title.className = 'award-title';
+    title.textContent = a.title;
+    const detail = document.createElement('div');
+    detail.className = 'award-detail';
+    detail.textContent = a.detail;
+    body.appendChild(title); body.appendChild(detail);
+    row.appendChild(body);
+    const winner = document.createElement('div');
+    winner.className = 'award-winner';
+    winner.textContent = a.winner;
+    winner.style.background = COLORS[a.winner];
+    row.appendChild(winner);
+    wrap.appendChild(row);
+  });
+}
+function renderStreaks() {
+  const wrap = document.getElementById('streak-list');
+  wrap.innerHTML = '';
+  PEOPLE.forEach(p => {
+    const map = personMoodMap(p);
+    let streak = 0;
+    let d = new Date();
+    while (true) {
+      const dateStr = d.toISOString().slice(0, 10);
+      if (map[dateStr] !== undefined) { streak++; d.setDate(d.getDate() - 1); }
+      else break;
+    }
+    const row = document.createElement('div');
+    row.className = 'streak-row';
+    const name = document.createElement('div');
+    name.className = 'streak-name';
+    name.textContent = p;
+    row.appendChild(name);
+    const flames = document.createElement('div');
+    flames.className = 'streak-flames';
+    flames.textContent = streak > 0 ? '🔥'.repeat(Math.min(streak, 5)) : '—';
+    row.appendChild(flames);
+    const count = document.createElement('div');
+    count.className = 'streak-count';
+    count.textContent = `${streak} day${streak !== 1 ? 's' : ''}`;
+    row.appendChild(count);
+    wrap.appendChild(row);
+  });
+}
+function renderAwardsTab() { renderAwardsList(); renderStreaks(); }
+
+/* =========================================================================
+   FOOTBALL BETS
+   ========================================================================= */
+function findPrediction(matchId, person) {
+  return predictions.find(pr => pr.matchId === matchId && pr.person === person) || null;
+}
+function computeBeerStandings() {
+  const totals = {};
+  PEOPLE.forEach(p => { totals[p] = Number(settings[`baseBeers_${p}`] || 0); });
+  matches.forEach(m => {
+    if (m.resultA === null || m.resultA === undefined || m.resultB === null || m.resultB === undefined) return;
+    PEOPLE.forEach(p => {
+      const pred = findPrediction(m.id, p);
+      if (pred && pred.scoreA === m.resultA && pred.scoreB === m.resultB) {
+        totals[p] = (totals[p] || 0) + 1;
+      }
+    });
+  });
+  return totals;
+}
+function renderBetsScoreboard() {
+  const wrap = document.getElementById('bets-scoreboard');
+  wrap.innerHTML = '';
+  const totals = computeBeerStandings();
+  const maxTotal = Math.max(1, ...PEOPLE.map(p => totals[p]));
+  const actualWinner = settings.actualWinner;
+  const sorted = [...PEOPLE].sort((a,b) => totals[b] - totals[a]);
+  sorted.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'beer-row';
+    const top = document.createElement('div');
+    top.className = 'beer-top-line';
+    const name = document.createElement('span');
+    name.className = 'beer-name';
+    name.textContent = p;
+    const pick = winnerPicks.find(w => w.person === p);
+    if (actualWinner && pick && pick.prediction.toLowerCase() === actualWinner.toLowerCase()) {
+      const tag = document.createElement('span');
+      tag.className = 'beer-champ-tag';
+      tag.textContent = '🏆 called it';
+      name.appendChild(tag);
+    }
+    const val = document.createElement('span');
+    val.className = 'beer-value';
+    val.textContent = `${totals[p]} round${totals[p] !== 1 ? 's' : ''}`;
+    top.appendChild(name); top.appendChild(val);
+    row.appendChild(top);
+    const track = document.createElement('div');
+    track.className = 'hours-bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'hours-bar-fill';
+    fill.style.width = `${(totals[p] / maxTotal) * 100}%`;
+    fill.style.background = COLORS[p];
+    track.appendChild(fill);
+    row.appendChild(track);
+    wrap.appendChild(row);
+  });
+}
+function renderMatchList() {
+  const wrap = document.getElementById('match-list');
+  wrap.innerHTML = '';
+  matches.forEach(m => {
+    const settled = m.resultA !== null && m.resultA !== undefined && m.resultB !== null && m.resultB !== undefined;
+    const card = document.createElement('div');
+    card.className = 'match-card' + (settled ? ' settled' : '');
+
+    const top = document.createElement('div');
+    top.className = 'match-top';
+    const teams = document.createElement('div');
+    teams.className = 'match-teams';
+    teams.textContent = `${m.teamA} vs ${m.teamB}`;
+    top.appendChild(teams);
+    card.appendChild(top);
+
+    const meta = document.createElement('div');
+    meta.className = 'match-meta';
+    meta.textContent = m.meta;
+    card.appendChild(meta);
+
+    const grid = document.createElement('div');
+    grid.className = 'predict-grid';
+    PEOPLE.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'predict-row';
+      const name = document.createElement('div');
+      name.className = 'predict-name';
+      name.textContent = p;
+      name.style.color = COLORS[p];
+      row.appendChild(name);
+
+      const pred = findPrediction(m.id, p);
+      const inputA = document.createElement('input');
+      inputA.type = 'number'; inputA.min = '0'; inputA.className = 'score-input';
+      inputA.value = pred ? pred.scoreA : '';
+      inputA.disabled = settled;
+      inputA.onchange = async () => {
+        const b = pred ? pred.scoreB : null;
+        const scoreA = inputA.value === '' ? null : parseInt(inputA.value);
+        if (scoreA === null || b === null) { updateLocalPrediction(m.id, p, scoreA, b); return; }
+        updateLocalPrediction(m.id, p, scoreA, b);
+        try { await apiSetPrediction(m.id, p, scoreA, b); } catch (e) { console.error(e); }
+        renderBetsScoreboard();
+      };
+      row.appendChild(inputA);
+
+      const sep = document.createElement('span');
+      sep.className = 'score-sep';
+      sep.textContent = '–';
+      row.appendChild(sep);
+
+      const inputB = document.createElement('input');
+      inputB.type = 'number'; inputB.min = '0'; inputB.className = 'score-input';
+      inputB.value = pred ? pred.scoreB : '';
+      inputB.disabled = settled;
+      inputB.onchange = async () => {
+        const a = pred ? pred.scoreA : null;
+        const scoreB = inputB.value === '' ? null : parseInt(inputB.value);
+        if (a === null || scoreB === null) { updateLocalPrediction(m.id, p, a, scoreB); return; }
+        updateLocalPrediction(m.id, p, a, scoreB);
+        try { await apiSetPrediction(m.id, p, a, scoreB); } catch (e) { console.error(e); }
+        renderBetsScoreboard();
+      };
+      row.appendChild(inputB);
+
+      if (settled && pred && pred.scoreA === m.resultA && pred.scoreB === m.resultB) {
+        const badge = document.createElement('span');
+        badge.className = 'predict-win-badge';
+        badge.textContent = '🍺';
+        row.appendChild(badge);
+      }
+      grid.appendChild(row);
+    });
+    card.appendChild(grid);
+
+    if (settled) {
+      const tag = document.createElement('div');
+      tag.className = 'settled-tag';
+      tag.textContent = `Final score: ${m.teamA} ${m.resultA} – ${m.resultB} ${m.teamB}`;
+      card.appendChild(tag);
+    } else {
+      const resultRow = document.createElement('div');
+      resultRow.className = 'result-row';
+      const label = document.createElement('span');
+      label.className = 'result-label';
+      label.textContent = 'REAL RESULT';
+      resultRow.appendChild(label);
+      const rInputA = document.createElement('input');
+      rInputA.type = 'number'; rInputA.min = '0'; rInputA.className = 'score-input';
+      resultRow.appendChild(rInputA);
+      const sep = document.createElement('span');
+      sep.className = 'score-sep';
+      sep.textContent = '–';
+      resultRow.appendChild(sep);
+      const rInputB = document.createElement('input');
+      rInputB.type = 'number'; rInputB.min = '0'; rInputB.className = 'score-input';
+      resultRow.appendChild(rInputB);
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'result-save-btn';
+      saveBtn.textContent = 'Save result';
+      saveBtn.onclick = async () => {
+        const a = rInputA.value, b = rInputB.value;
+        if (a === '' || b === '') { alert('Enter both scores first.'); return; }
+        m.resultA = parseInt(a); m.resultB = parseInt(b);
+        renderMatchList();
+        renderBetsScoreboard();
+        try { await apiSetMatchResult(m.id, m.resultA, m.resultB); } catch (e) { console.error(e); }
+      };
+      resultRow.appendChild(saveBtn);
+      card.appendChild(resultRow);
+    }
+    wrap.appendChild(card);
+  });
+}
+function updateLocalPrediction(matchId, person, scoreA, scoreB) {
+  let pred = findPrediction(matchId, person);
+  if (!pred) { pred = { matchId, person, scoreA, scoreB }; predictions.push(pred); }
+  else { pred.scoreA = scoreA; pred.scoreB = scoreB; }
+}
+document.getElementById('add-match-btn').onclick = async () => {
+  const teamA = document.getElementById('new-match-teamA').value.trim();
+  const teamB = document.getElementById('new-match-teamB').value.trim();
+  const date = document.getElementById('new-match-date').value.trim();
+  if (!teamA || !teamB) { alert('Enter both team names.'); return; }
+  const match = { id: `m-${Date.now()}`, teamA, teamB, meta: date || 'Date TBD', resultA: null, resultB: null };
+  matches.push(match);
+  document.getElementById('new-match-teamA').value = '';
+  document.getElementById('new-match-teamB').value = '';
+  document.getElementById('new-match-date').value = '';
+  renderMatchList();
+  try { await apiAddMatch(match); } catch (e) { console.error(e); }
+};
+function renderWinnerPredict() {
+  const wrap = document.getElementById('winner-predict');
+  wrap.innerHTML = '';
+  PEOPLE.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'winner-pick-row';
+    const name = document.createElement('div');
+    name.className = 'winner-pick-name';
+    name.textContent = p;
+    name.style.color = COLORS[p];
+    row.appendChild(name);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'e.g. Argentina';
+    const existing = winnerPicks.find(w => w.person === p);
+    input.value = existing ? existing.prediction : '';
+    input.onchange = async () => {
+      const val = input.value.trim();
+      let pick = winnerPicks.find(w => w.person === p);
+      if (!pick) { pick = { person: p, prediction: val }; winnerPicks.push(pick); }
+      else { pick.prediction = val; }
+      try { await apiSetWinnerPick(p, val); } catch (e) { console.error(e); }
+    };
+    row.appendChild(input);
+    wrap.appendChild(row);
+  });
+  const actualInput = document.getElementById('actual-winner-input');
+  actualInput.value = settings.actualWinner || '';
+  const resultDiv = document.getElementById('winner-result');
+  if (settings.actualWinner) {
+    const winners = PEOPLE.filter(p => {
+      const pick = winnerPicks.find(w => w.person === p);
+      return pick && pick.prediction.toLowerCase() === settings.actualWinner.toLowerCase();
+    });
+    resultDiv.textContent = winners.length
+      ? `🏆 ${winners.join(' & ')} called it — free beers all day.`
+      : `Nobody guessed ${settings.actualWinner} — standings unaffected.`;
+  } else {
+    resultDiv.textContent = '';
+  }
+}
+document.getElementById('save-winner-btn').onclick = async () => {
+  const val = document.getElementById('actual-winner-input').value.trim();
+  if (!val) { alert('Enter the actual World Cup winner first.'); return; }
+  settings.actualWinner = val;
+  renderWinnerPredict();
+  renderBetsScoreboard();
+  try { await apiSetSetting('actualWinner', val); } catch (e) { console.error(e); }
+};
+function renderBetsTab() { renderBetsScoreboard(); renderMatchList(); renderWinnerPredict(); }
+
+/* =========================================================================
+   TAB SWITCHING
+   ========================================================================= */
+document.getElementById('tab-time').onclick = () => switchMainTab('time');
+document.getElementById('tab-mood').onclick = () => switchMainTab('mood');
+document.getElementById('tab-awards').onclick = () => switchMainTab('awards');
+document.getElementById('tab-bets').onclick = () => switchMainTab('bets');
+function switchMainTab(which) {
+  document.getElementById('tab-time').classList.toggle('active', which === 'time');
+  document.getElementById('tab-mood').classList.toggle('active', which === 'mood');
+  document.getElementById('tab-awards').classList.toggle('active', which === 'awards');
+  document.getElementById('tab-bets').classList.toggle('active', which === 'bets');
+  document.getElementById('view-time').classList.toggle('active', which === 'time');
+  document.getElementById('view-mood').classList.toggle('active', which === 'mood');
+  document.getElementById('view-awards').classList.toggle('active', which === 'awards');
+  document.getElementById('view-bets').classList.toggle('active', which === 'bets');
+  if (which === 'time') renderTimeTab();
+  if (which === 'mood') renderMoodTab();
+  if (which === 'awards') renderAwardsTab();
+  if (which === 'bets') renderBetsTab();
+}
+
+/* ---------------------------------------------------------------------
+   Init
+   --------------------------------------------------------------------- */
+document.getElementById('backfill-date').value = todayISO();
+renderMini('energy', 'mini-energy');
+renderMini('stress', 'mini-stress');
+renderMini('happiness', 'mini-happiness');
+
 if (!WEB_APP_URL) {
   const banner = document.getElementById('config-banner');
   banner.style.display = 'block';

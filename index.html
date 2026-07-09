@@ -675,7 +675,7 @@ function moodWord(score) {
    API layer — one GET returns everything; POST is action-routed
    --------------------------------------------------------------------- */
 async function apiGetAll() {
-  const res = await fetch(WEB_APP_URL);
+  const res = await fetch(`${WEB_APP_URL}?t=${Date.now()}`, { cache: 'no-store' });
   return await res.json();
 }
 async function apiPost(payload) {
@@ -1452,16 +1452,18 @@ function renderMatchList() {
       row.appendChild(name);
 
       const pred = findPrediction(m.id, p);
+      let localA = pred ? pred.scoreA : null;
+      let localB = pred ? pred.scoreB : null;
+
       const inputA = document.createElement('input');
       inputA.type = 'number'; inputA.min = '0'; inputA.className = 'score-input';
-      inputA.value = pred ? pred.scoreA : '';
+      inputA.value = localA === null ? '' : localA;
       inputA.disabled = settled;
       inputA.onchange = async () => {
-        const b = pred ? pred.scoreB : null;
-        const scoreA = inputA.value === '' ? null : parseInt(inputA.value);
-        if (scoreA === null || b === null) { updateLocalPrediction(m.id, p, scoreA, b); return; }
-        updateLocalPrediction(m.id, p, scoreA, b);
-        try { await apiSetPrediction(m.id, p, scoreA, b); } catch (e) { console.error(e); }
+        localA = inputA.value === '' ? null : parseInt(inputA.value);
+        updateLocalPrediction(m.id, p, localA, localB);
+        if (localA === null || localB === null) return;
+        try { await apiSetPrediction(m.id, p, localA, localB); } catch (e) { console.error(e); }
         renderBetsScoreboard();
       };
       row.appendChild(inputA);
@@ -1473,14 +1475,13 @@ function renderMatchList() {
 
       const inputB = document.createElement('input');
       inputB.type = 'number'; inputB.min = '0'; inputB.className = 'score-input';
-      inputB.value = pred ? pred.scoreB : '';
+      inputB.value = localB === null ? '' : localB;
       inputB.disabled = settled;
       inputB.onchange = async () => {
-        const a = pred ? pred.scoreA : null;
-        const scoreB = inputB.value === '' ? null : parseInt(inputB.value);
-        if (a === null || scoreB === null) { updateLocalPrediction(m.id, p, a, scoreB); return; }
-        updateLocalPrediction(m.id, p, a, scoreB);
-        try { await apiSetPrediction(m.id, p, a, scoreB); } catch (e) { console.error(e); }
+        localB = inputB.value === '' ? null : parseInt(inputB.value);
+        updateLocalPrediction(m.id, p, localA, localB);
+        if (localA === null || localB === null) return;
+        try { await apiSetPrediction(m.id, p, localA, localB); } catch (e) { console.error(e); }
         renderBetsScoreboard();
       };
       row.appendChild(inputB);

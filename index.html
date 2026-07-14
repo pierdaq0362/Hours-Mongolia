@@ -380,6 +380,51 @@
     .bar-fill { transition: none; }
     .pulsing { animation: none; }
   }
+
+  /* crew pulse banner */
+  .pulse-banner {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: #FFFFFF;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 18px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .pulse-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    background: var(--luigi);
+  }
+  .pulse-text { transition: opacity 0.35s ease; }
+  .pulse-text.fade { opacity: 0; }
+
+  /* weekly recap */
+  .recap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .recap-item {
+    background: var(--track); border-radius: 8px; padding: 10px 12px;
+  }
+  .recap-item.full { grid-column: 1 / -1; }
+  .recap-tag {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--faint); margin-bottom: 4px;
+  }
+  .recap-val { font-weight: 600; font-size: 13.5px; line-height: 1.35; }
+  .recap-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* fact of the day */
+  .fact-card { display: flex; gap: 12px; align-items: flex-start; }
+  .fact-icon { font-size: 18px; line-height: 1; margin-top: 1px; }
+  .fact-text { font-size: 14px; line-height: 1.55; color: var(--ink); }
+
+  /* random animal pic */
+  .animal-pic-wrap {
+    width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden;
+    background: var(--track); display: flex; align-items: center; justify-content: center;
+  }
+  .animal-pic-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
 </style>
 </head>
 <body>
@@ -392,6 +437,11 @@
     <h1>The Punch Board</h1>
     <div class="sub">Clock in, clock out, check in on the vibe, and settle the beer bets.</div>
   </header>
+
+  <div class="pulse-banner">
+    <span class="pulse-dot"></span>
+    <span class="pulse-text" id="pulse-text">Loading crew pulse…</span>
+  </div>
 
   <div class="main-tabs">
     <div class="main-tab active" id="tab-time">Time Clock</div>
@@ -557,6 +607,27 @@
       <div class="panel-sub">Consecutive days logged, ending today.</div>
       <div id="streak-list"></div>
     </section>
+
+    <section class="panel">
+      <div class="panel-label">WEEKLY RECAP</div>
+      <div class="panel-sub" id="recap-range">Last 7 days</div>
+      <div class="recap-grid" id="recap-grid"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">FACT OF THE DAY</div>
+      <div class="fact-card">
+        <span class="fact-icon">💡</span>
+        <span class="fact-text" id="fact-of-day">Loading…</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">RANDOM ANIMAL</div>
+      <div class="animal-pic-wrap" id="animal-pic-wrap">
+        <span class="empty-state">loading photo…</span>
+      </div>
+    </section>
   </div>
 
   <!-- ===================== FOOTBALL BETS ===================== -->
@@ -710,6 +781,7 @@ async function loadData() {
   // Awards and Bets render on tab activation (cheap enough to always keep fresh too)
   renderAwardsTab();
   renderBetsTab();
+  renderCrewPulse();
 }
 
 /* =========================================================================
@@ -1359,7 +1431,254 @@ function renderStreaks() {
     wrap.appendChild(row);
   });
 }
-function renderAwardsTab() { renderAwardsList(); renderStreaks(); }
+/* ---------------------------------------------------------------------
+   Weekly Recap — auto-summarizes the last 7 days, zero input required.
+   --------------------------------------------------------------------- */
+function last7Dates() {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+}
+function computeWeeklyRecap() {
+  const days = last7Dates();
+  const dayLabel = (dateStr) => new Date(dateStr + 'T00:00:00').toLocaleDateString([], { weekday: 'long' });
+
+  // Busiest day: combined crew hours per day
+  const hoursByDay = {};
+  days.forEach(d => { hoursByDay[d] = 0; });
+  entries.forEach(e => {
+    const d = e.start.slice(0, 10);
+    if (hoursByDay[d] !== undefined) hoursByDay[d] += e.hours;
+  });
+  let busiestDay = null, busiestHours = 0;
+  days.forEach(d => {
+    if (hoursByDay[d] > busiestHours) { busiestHours = hoursByDay[d]; busiestDay = d; }
+  });
+
+  // Best mood day: crew average mood per day
+  const moodByDay = {};
+  days.forEach(d => { moodByDay[d] = []; });
+  PEOPLE.forEach(p => {
+    const map = personMoodMap(p);
+    days.forEach(d => { if (map[d] !== undefined) moodByDay[d].push(map[d]); });
+  });
+  let bestMoodDay = null, bestMoodAvg = -1;
+  days.forEach(d => {
+    if (moodByDay[d].length === 0) return;
+    const avg = moodByDay[d].reduce((a,b) => a+b, 0) / moodByDay[d].length;
+    if (avg > bestMoodAvg) { bestMoodAvg = avg; bestMoodDay = d; }
+  });
+
+  // Closest bet: smallest total goal-difference among settled, non-exact predictions
+  let closestBet = null, closestDiff = Infinity;
+  matches.forEach(m => {
+    if (m.resultA === null || m.resultA === undefined || m.resultB === null || m.resultB === undefined) return;
+    PEOPLE.forEach(p => {
+      const pred = findPrediction(m.id, p);
+      if (!pred || pred.scoreA === null || pred.scoreB === null) return;
+      const diff = Math.abs(pred.scoreA - m.resultA) + Math.abs(pred.scoreB - m.resultB);
+      if (diff === 0) return; // exact hits already celebrated on the beer scoreboard
+      if (diff < closestDiff) {
+        closestDiff = diff;
+        closestBet = { person: p, match: m, pred };
+      }
+    });
+  });
+
+  return {
+    busiestDay: busiestDay ? dayLabel(busiestDay) : null,
+    busiestHours,
+    bestMoodDay: bestMoodDay ? dayLabel(bestMoodDay) : null,
+    bestMoodAvg,
+    closestBet
+  };
+}
+function renderWeeklyRecap() {
+  const wrap = document.getElementById('recap-grid');
+  const rangeEl = document.getElementById('recap-range');
+  const days = last7Dates();
+  rangeEl.textContent = `${formatDate(new Date(days[0]))} – ${formatDate(new Date(days[days.length - 1]))}`;
+
+  const r = computeWeeklyRecap();
+  wrap.innerHTML = '';
+
+  const busyItem = document.createElement('div');
+  busyItem.className = 'recap-item';
+  busyItem.innerHTML = `<div class="recap-tag">Busiest Day</div>
+    <div class="recap-val">${r.busiestDay || '—'}</div>
+    <div class="recap-sub">${r.busiestDay ? `${r.busiestHours.toFixed(1)} combined hrs` : 'No shifts logged yet'}</div>`;
+  wrap.appendChild(busyItem);
+
+  const moodItem = document.createElement('div');
+  moodItem.className = 'recap-item';
+  moodItem.innerHTML = `<div class="recap-tag">Best Mood Day</div>
+    <div class="recap-val">${r.bestMoodDay || '—'}</div>
+    <div class="recap-sub">${r.bestMoodDay ? `Crew avg ${r.bestMoodAvg.toFixed(1)} / 5` : 'No check-ins yet'}</div>`;
+  wrap.appendChild(moodItem);
+
+  const betItem = document.createElement('div');
+  betItem.className = 'recap-item full';
+  if (r.closestBet) {
+    const { person, match, pred } = r.closestBet;
+    betItem.innerHTML = `<div class="recap-tag">Closest Bet</div>
+      <div class="recap-val">${person} guessed ${match.teamA} ${pred.scoreA}–${pred.scoreB} ${match.teamB}</div>
+      <div class="recap-sub">Real score was ${match.resultA}–${match.resultB}</div>`;
+  } else {
+    betItem.innerHTML = `<div class="recap-tag">Closest Bet</div>
+      <div class="recap-val">Nothing settled yet</div>
+      <div class="recap-sub">Enter a real result on Football Bets to see this fill in</div>`;
+  }
+  wrap.appendChild(betItem);
+}
+
+/* ---------------------------------------------------------------------
+   Fact of the Day — curated weird/ridiculous facts, any topic.
+   Local list, no network call, so it's 100% reliable. Deterministic
+   per calendar day so the whole crew sees the same fact.
+   --------------------------------------------------------------------- */
+const dailyFacts = [
+  "Platypuses don't have nipples — they sweat milk through their skin.",
+  "Wombat poop is cube-shaped so it doesn't roll away.",
+  "The inventor of the Pringles can is buried in one.",
+  "A group of flamingos is called a 'flamboyance'.",
+  "Sea otters hold hands while sleeping so they don't drift apart.",
+  "There's a species of jellyfish that can revert to a baby state and become immortal.",
+  "A shrimp's heart is in its head.",
+  "Cows have best friends and get stressed when separated from them.",
+  "Scotland's national animal is the unicorn.",
+  "A crocodile can't stick its tongue out.",
+  "Slugs have four noses.",
+  "Some turtles breathe through their butts.",
+  "The dot over a lowercase 'i' or 'j' has a name: a tittle.",
+  "A single cloud can weigh over a million pounds.",
+  "Starfish don't have brains or blood.",
+  "Bees can get drunk on fermented nectar and get 'bounced' from the hive by guard bees.",
+  "The 'sound' of silence you hear in a quiet room is actually your own blood flow.",
+  "Hippos sweat a natural red-tinted, sunscreen-like substance.",
+  "There's a town in Norway called Hell, and it freezes over most winters.",
+  "A crowd of jellyfish is called a 'smack'.",
+  "Snails can sleep for up to three years.",
+  "A live cockroach can survive for weeks without its head before starving to death.",
+  "Wolves can hear each other howling from up to 6 miles away in the forest, and 10 in open tundra.",
+  "Tardigrades ('water bears') can survive being shot out of a gun and the vacuum of space.",
+  "The 'five second rule' for dropped food was tested and is basically nonsense — bacteria transfers instantly.",
+  "Some pistol shrimp snap their claw so fast it briefly creates heat close to the sun's surface temperature.",
+  "There's a fish called the ocean sunfish that can lay 300 million eggs at once.",
+  "Male seahorses are the ones who get pregnant and give birth.",
+  "Duck quacks technically do echo — the myth that they don't is false.",
+  "A blue whale's heart is the size of a small car and can be heard from over 2 miles away.",
+  "Kangaroos can't walk backwards.",
+  "Jackrabbits can reach speeds of up to 40 mph and use their giant ears to cool off, not just to hear.",
+  "The world's oldest known joke is a 3,900-year-old Sumerian proverb about flatulence.",
+  "Cows moo in regional accents.",
+  "An octopus can taste with its entire body through its skin.",
+];
+function dayOfYear(d) {
+  const start = new Date(d.getFullYear(), 0, 0);
+  return Math.floor((d - start) / 86400000);
+}
+function renderFactOfDay() {
+  const idx = dayOfYear(new Date()) % dailyFacts.length;
+  document.getElementById('fact-of-day').textContent = dailyFacts[idx];
+}
+
+/* ---------------------------------------------------------------------
+   Random Animal Pic — separate from the fact above. Uses a direct
+   <img src="..."> pointing at an image-serving URL (not a JSON API),
+   so it doesn't depend on fetch()/CORS. Locked to one photo per
+   calendar day via localStorage so the whole crew sees the same one.
+   --------------------------------------------------------------------- */
+const ANIMAL_PIC_KEY = 'punchboard-animal-pic';
+const animalPicSources = [
+  () => `https://placedog.net/640/360?random=${Date.now()}`,
+  () => `https://placebear.com/640/360?${Date.now()}`,
+];
+function renderAnimalPic() {
+  const wrap = document.getElementById('animal-pic-wrap');
+  const today = todayISO();
+  let stored = null;
+  try { stored = JSON.parse(localStorage.getItem(ANIMAL_PIC_KEY) || 'null'); } catch (e) {}
+  let url;
+  if (stored && stored.date === today) {
+    url = stored.url;
+  } else {
+    const gen = animalPicSources[Math.floor(Math.random() * animalPicSources.length)];
+    url = gen();
+    localStorage.setItem(ANIMAL_PIC_KEY, JSON.stringify({ date: today, url }));
+  }
+  wrap.innerHTML = `<img src="${url}" alt="random animal" onerror="this.parentElement.innerHTML='<span class=&quot;empty-state&quot;>couldn\\'t load photo right now</span>'">`;
+}
+
+/* ---------------------------------------------------------------------
+   Crew Pulse — one-line-per-person banner, computed live from this
+   week's hours + mood. No input required, just real numbers.
+   --------------------------------------------------------------------- */
+function renderCrewPulse() {
+  const el = document.getElementById('pulse-text');
+  if (!el) return;
+  const days = last7Dates();
+
+  const stats = PEOPLE.map(p => {
+    const hours7 = entries
+      .filter(e => e.person === p && days.includes(e.start.slice(0, 10)))
+      .reduce((sum, e) => sum + e.hours, 0);
+    const map = personMoodMap(p);
+    const moodVals = days.map(d => map[d]).filter(v => v !== undefined);
+    const avgMood = moodVals.length ? moodVals.reduce((a,b) => a+b, 0) / moodVals.length : null;
+    return { person: p, hours7, avgMood };
+  });
+
+  const hasData = stats.some(s => s.hours7 > 0 || s.avgMood !== null);
+  if (!hasData) {
+    el.textContent = 'Log some hours or check in on mood to light up the Crew Pulse';
+    return;
+  }
+
+  const withHours = stats.filter(s => s.hours7 > 0);
+  const grinder = withHours.length ? withHours.reduce((a,b) => a.hours7 > b.hours7 ? a : b) : null;
+  const withMood = stats.filter(s => s.avgMood !== null);
+  const vibing = withMood.length ? withMood.reduce((a,b) => a.avgMood > b.avgMood ? a : b) : null;
+  const fumes = withMood.length > 1 ? withMood.reduce((a,b) => a.avgMood < b.avgMood ? a : b) : null;
+
+  const lines = stats.map(s => {
+    if (grinder && s.person === grinder.person) {
+      return `${s.person} is grinding — ${s.hours7.toFixed(1)}h logged this week`;
+    }
+    if (vibing && s.person === vibing.person && (!fumes || vibing.person !== fumes.person)) {
+      return `${s.person} is vibing — best mood this week (${s.avgMood.toFixed(1)}/5)`;
+    }
+    if (fumes && s.person === fumes.person && fumes.avgMood < 3) {
+      return `${s.person} is running on fumes — mood dipped to ${s.avgMood.toFixed(1)}/5`;
+    }
+    return `${s.person} is holding steady`;
+  });
+
+  // simple rotation through the three lines, one at a time, with a fade
+  let i = 0;
+  const show = () => {
+    el.classList.add('fade');
+    setTimeout(() => {
+      el.textContent = lines[i % lines.length];
+      el.classList.remove('fade');
+      i++;
+    }, 350);
+  };
+  clearInterval(window.__pulseInterval);
+  show();
+  window.__pulseInterval = setInterval(show, 5000);
+}
+
+function renderAwardsTab() {
+  renderAwardsList();
+  renderStreaks();
+  renderWeeklyRecap();
+  renderFactOfDay();
+  renderAnimalPic();
+}
 
 /* =========================================================================
    FOOTBALL BETS
@@ -1633,6 +1952,8 @@ document.getElementById('backfill-date').value = todayISO();
 renderMini('energy', 'mini-energy');
 renderMini('stress', 'mini-stress');
 renderMini('happiness', 'mini-happiness');
+renderFactOfDay();
+renderAnimalPic();
 
 if (!WEB_APP_URL) {
   const banner = document.getElementById('config-banner');

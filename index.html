@@ -425,6 +425,49 @@
     background: var(--track); display: flex; align-items: center; justify-content: center;
   }
   .animal-pic-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* who-are-you identity */
+  .whoami-row {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint);
+  }
+  .whoami-switch {
+    background: none; border: none; color: var(--muted); font-family: inherit;
+    font-size: 11px; text-decoration: underline; cursor: pointer; padding: 0;
+  }
+  .you-badge {
+    font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.08em;
+    color: var(--muted); background: var(--track); padding: 2px 7px; border-radius: 999px;
+    margin-left: auto;
+  }
+  .person-card.is-you { box-shadow: 0 0 0 2px var(--ink); }
+
+  .identity-modal {
+    position: fixed; inset: 0; background: rgba(43,40,35,0.55);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; z-index: 1000;
+  }
+  .identity-card {
+    background: #fff; border-radius: 14px; padding: 26px 22px; max-width: 360px;
+    width: 100%; border: 1px solid var(--line);
+  }
+  .identity-eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em;
+    color: var(--faint); margin-bottom: 8px;
+  }
+  .identity-title {
+    font-family: 'Spectral', Georgia, serif; font-size: 22px; font-weight: 700; margin-bottom: 8px;
+  }
+  .identity-sub { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 18px; }
+  .identity-options { display: flex; flex-direction: column; gap: 10px; }
+  .identity-option {
+    border: 1.5px solid var(--line); border-radius: 8px; padding: 12px 14px; background: #fff;
+    font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; gap: 10px; transition: all 0.15s ease; width: 100%;
+    text-align: left; color: var(--ink);
+  }
+  .identity-option:active { transform: scale(0.98); }
+  .identity-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -436,6 +479,10 @@
     <div class="eyebrow">SHIFT REGISTER · GROUP CLOCK</div>
     <h1>The Punch Board</h1>
     <div class="sub">Clock in, clock out, check in on the vibe, and settle the beer bets.</div>
+    <div class="whoami-row">
+      <span id="whoami-text">—</span>
+      <button class="whoami-switch" id="whoami-switch-btn">switch</button>
+    </div>
   </header>
 
   <div class="pulse-banner">
@@ -686,6 +733,15 @@
   <footer>Shared with Luigi, Juan &amp; Sergio · data is stored in a shared Google Sheet</footer>
 </div>
 
+<div class="identity-modal" id="identity-modal">
+  <div class="identity-card">
+    <div class="identity-eyebrow">QUICK QUESTION</div>
+    <div class="identity-title">Who's opening this?</div>
+    <div class="identity-sub">We'll remember it on this device — pre-fills forms and highlights your card on Time Clock. Everyone's controls stay visible either way.</div>
+    <div class="identity-options" id="identity-options"></div>
+  </div>
+</div>
+
 <script>
 /* =========================================================================
    CONFIG — paste your Apps Script Web App URL below between the quotes.
@@ -695,6 +751,7 @@ const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwBOJ6qBRgltHYwgvQC
 const PEOPLE = ['Luigi', 'Juan', 'Sergio'];
 const COLORS = { Luigi: '#D97757', Juan: '#4A7C7C', Sergio: '#8B6F47' };
 const ACTIVE_SHIFTS_KEY = 'punchboard-active-shifts';
+const WHOAMI_KEY = 'punchboard-whoami';
 
 /* ---------------------------------------------------------------------
    Shared state (populated from one combined GET call)
@@ -708,6 +765,7 @@ let settings = {};         // {baseBeers_Luigi, baseBeers_Juan, baseBeers_Sergio
 
 let activeShifts = JSON.parse(localStorage.getItem(ACTIVE_SHIFTS_KEY) || '{}');
 let viewMode = 'lifetime';
+let whoAmI = localStorage.getItem(WHOAMI_KEY) || null;
 
 /* mood check-in state */
 let moodPerson = 'Luigi';
@@ -764,6 +822,64 @@ async function apiSetSetting(key, value) { await apiPost({ action: 'setSetting',
 
 function saveActiveShifts() { localStorage.setItem(ACTIVE_SHIFTS_KEY, JSON.stringify(activeShifts)); }
 
+/* ---------------------------------------------------------------------
+   Who-are-you identity — remembered per device via localStorage.
+   Personalizes defaults (pre-filled dropdowns, highlighted card, mood
+   tab). Doesn't restrict or hide anyone else's controls.
+   --------------------------------------------------------------------- */
+function renderIdentityOptions() {
+  const wrap = document.getElementById('identity-options');
+  wrap.innerHTML = '';
+  PEOPLE.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'identity-option';
+    const dot = document.createElement('span');
+    dot.className = 'identity-dot';
+    dot.style.background = COLORS[p];
+    btn.appendChild(dot);
+    btn.appendChild(document.createTextNode(p));
+    btn.onclick = () => setIdentity(p);
+    wrap.appendChild(btn);
+  });
+}
+function showIdentityModal() {
+  renderIdentityOptions();
+  document.getElementById('identity-modal').style.display = 'flex';
+}
+function hideIdentityModal() {
+  document.getElementById('identity-modal').style.display = 'none';
+}
+function setIdentity(person) {
+  whoAmI = person;
+  localStorage.setItem(WHOAMI_KEY, person);
+  hideIdentityModal();
+  applyIdentityDefaults();
+  syncMoodToIdentity();
+  renderTimeTab();
+  renderMoodTab();
+}
+function applyIdentityDefaults() {
+  const indicator = document.getElementById('whoami-text');
+  if (whoAmI) {
+    indicator.textContent = `You're ${whoAmI}`;
+    const mp = document.getElementById('manual-person');
+    const bp = document.getElementById('backfill-person');
+    if (mp) mp.value = whoAmI;
+    if (bp) bp.value = whoAmI;
+  } else {
+    indicator.textContent = "Who's this?";
+  }
+}
+function syncMoodToIdentity() {
+  if (!whoAmI) return;
+  moodPerson = whoAmI;
+  const existing = findMoodEntry(whoAmI, todayISO());
+  ratings = existing
+    ? { energy: existing.energy, stress: existing.stress, happiness: existing.happiness }
+    : { energy: null, stress: null, happiness: null };
+}
+document.getElementById('whoami-switch-btn').onclick = showIdentityModal;
+
 async function loadData() {
   try {
     const data = await apiGetAll();
@@ -773,6 +889,7 @@ async function loadData() {
     predictions = data.predictions || [];
     winnerPicks = data.winnerPicks || [];
     settings = data.settings || {};
+    syncMoodToIdentity(); // re-derive today's ratings for whoAmI now that real data is in
   } catch (e) {
     console.error('Failed to load data', e);
   }
@@ -846,7 +963,7 @@ function renderPersonRow() {
     const shiftStart = activeShifts[person];
     const isActive = !!shiftStart;
     const card = document.createElement('div');
-    card.className = 'person-card';
+    card.className = 'person-card' + (person === whoAmI ? ' is-you' : '');
     card.style.borderColor = isActive ? COLORS[person] : '#E4DDD0';
     card.style.background = isActive ? `${COLORS[person]}0D` : '#FFFFFF';
 
@@ -857,6 +974,12 @@ function renderPersonRow() {
     dot.style.background = COLORS[person];
     nameDiv.appendChild(dot);
     nameDiv.appendChild(document.createTextNode(person));
+    if (person === whoAmI) {
+      const badge = document.createElement('span');
+      badge.className = 'you-badge';
+      badge.textContent = 'YOU';
+      nameDiv.appendChild(badge);
+    }
     card.appendChild(nameDiv);
 
     if (isActive) {
@@ -1954,6 +2077,8 @@ renderMini('stress', 'mini-stress');
 renderMini('happiness', 'mini-happiness');
 renderFactOfDay();
 renderAnimalPic();
+applyIdentityDefaults();
+if (!whoAmI) showIdentityModal();
 
 if (!WEB_APP_URL) {
   const banner = document.getElementById('config-banner');

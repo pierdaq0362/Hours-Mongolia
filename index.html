@@ -372,7 +372,14 @@
   .settled-tag {
     font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); margin-top: 10px;
     padding-top: 10px; border-top: 1px dashed var(--line);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
   }
+  .archive-btn {
+    background: none; border: 1px solid var(--line); border-radius: 6px;
+    color: var(--muted); font-size: 11px; font-family: 'IBM Plex Mono', monospace;
+    padding: 5px 9px; cursor: pointer; flex-shrink: 0; white-space: nowrap;
+  }
+  .archive-btn:hover { border-color: var(--faint); color: var(--ink); }
   .winner-pick-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
   .winner-pick-name { width: 56px; font-size: 13px; font-weight: 600; flex-shrink: 0; }
 
@@ -468,6 +475,61 @@
   }
   .identity-option:active { transform: scale(0.98); }
   .identity-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* nudge: unread-style dot on tab label */
+  .main-tab { position: relative; }
+  .tab-dot {
+    display: none;
+    width: 7px; height: 7px; border-radius: 50%; background: #E0503C;
+    position: absolute; top: 8px; right: -11px;
+  }
+
+  /* nudge: dismissible check-in reminder card */
+  .nudge-card {
+    display: none;
+    align-items: center; gap: 12px;
+    background: #FFF4E6; border: 1px solid #F0C896; border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 16px; font-size: 13px; line-height: 1.5;
+  }
+  .nudge-card .nudge-text { flex: 1; }
+  .nudge-dismiss {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 16px; line-height: 1; padding: 0 2px; flex-shrink: 0;
+  }
+
+  /* secret: tap-sequence easter egg */
+  #app-title { cursor: default; user-select: none; }
+  .confetti-piece {
+    position: fixed; top: -10px; width: 8px; height: 14px; z-index: 1200;
+    opacity: 0.95; pointer-events: none;
+    animation-name: confetti-fall; animation-timing-function: ease-in;
+    animation-fill-mode: forwards;
+  }
+  @keyframes confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(105vh) rotate(540deg); opacity: 0.9; }
+  }
+  .egg-modal {
+    position: fixed; inset: 0; background: rgba(43,40,35,0.55);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; z-index: 1100;
+  }
+  .egg-card {
+    background: #FFF8EC; border: 1.5px dashed #E0C896; border-radius: 14px;
+    padding: 26px 22px; max-width: 360px; width: 100%; text-align: center;
+  }
+  .egg-eyebrow {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.14em;
+    color: #C98A3D; margin-bottom: 8px;
+  }
+  .egg-title {
+    font-family: 'Spectral', Georgia, serif; font-size: 22px; font-weight: 700; margin-bottom: 10px;
+  }
+  .egg-message { font-size: 14px; color: var(--muted); line-height: 1.55; margin-bottom: 18px; }
+  .egg-close-btn {
+    border: none; border-radius: 6px; background: var(--ink); color: #fff;
+    font-size: 13px; font-weight: 600; padding: 9px 16px; cursor: pointer; font-family: inherit;
+  }
 </style>
 </head>
 <body>
@@ -477,7 +539,7 @@
 
   <header>
     <div class="eyebrow">SHIFT REGISTER · GROUP CLOCK</div>
-    <h1>The Punch Board</h1>
+    <h1 id="app-title">The Punch Board</h1>
     <div class="sub">Clock in, clock out, check in on the vibe, and settle the beer bets.</div>
     <div class="whoami-row">
       <span id="whoami-text">—</span>
@@ -492,7 +554,7 @@
 
   <div class="main-tabs">
     <div class="main-tab active" id="tab-time">Time Clock</div>
-    <div class="main-tab" id="tab-mood">Mood Tracker</div>
+    <div class="main-tab" id="tab-mood">Mood Tracker<span class="tab-dot" id="mood-tab-dot"></span></div>
     <div class="main-tab" id="tab-awards">Crew Awards</div>
     <div class="main-tab" id="tab-bets">Football Bets</div>
   </div>
@@ -558,6 +620,11 @@
 
   <!-- ===================== MOOD TRACKER ===================== -->
   <div class="view" id="view-mood">
+
+    <div class="nudge-card" id="mood-nudge-card">
+      <span class="nudge-text" id="mood-nudge-text">You haven't checked in today — 10 seconds, three taps.</span>
+      <button class="nudge-dismiss" id="mood-nudge-dismiss" title="Dismiss for today">✕</button>
+    </div>
 
     <section class="panel">
       <div class="panel-label">TODAY'S CHECK-IN</div>
@@ -742,6 +809,15 @@
   </div>
 </div>
 
+<div class="egg-modal" id="egg-modal">
+  <div class="egg-card">
+    <div class="egg-eyebrow">🥚 SECRET FOUND</div>
+    <div class="egg-title">Nice tapping.</div>
+    <div class="egg-message" id="egg-message">—</div>
+    <button class="egg-close-btn" id="egg-close-btn">Close</button>
+  </div>
+</div>
+
 <script>
 /* =========================================================================
    CONFIG — paste your Apps Script Web App URL below between the quotes.
@@ -752,6 +828,7 @@ const PEOPLE = ['Luigi', 'Juan', 'Sergio'];
 const COLORS = { Luigi: '#D97757', Juan: '#4A7C7C', Sergio: '#8B6F47' };
 const ACTIVE_SHIFTS_KEY = 'punchboard-active-shifts';
 const WHOAMI_KEY = 'punchboard-whoami';
+const NUDGE_DISMISS_KEY = 'punchboard-mood-nudge-dismissed';
 
 /* ---------------------------------------------------------------------
    Shared state (populated from one combined GET call)
@@ -879,6 +956,51 @@ function syncMoodToIdentity() {
     : { energy: null, stress: null, happiness: null };
 }
 document.getElementById('whoami-switch-btn').onclick = showIdentityModal;
+
+/* ---------------------------------------------------------------------
+   Secret — tap the app title 7 times in quick succession.
+   Completely invisible until found; no hint anywhere in the UI.
+   --------------------------------------------------------------------- */
+const EGG_MESSAGES = [
+  "The Punch Board has been watching. It approves of your dedication to nonsense.",
+  "You found the secret. There is no prize. The prize was the taps you made along the way.",
+  "Legend says whoever finds this gets first pick of beers forever. Legend is wrong.",
+  "Achievement unlocked: Has Too Much Time On Their Hands.",
+  "Somewhere, Luigi, Juan, or Sergio is proud of you. Probably.",
+];
+let titleTapCount = 0;
+let titleTapResetTimer = null;
+document.getElementById('app-title').addEventListener('click', () => {
+  titleTapCount++;
+  clearTimeout(titleTapResetTimer);
+  titleTapResetTimer = setTimeout(() => { titleTapCount = 0; }, 1500);
+  if (titleTapCount >= 7) {
+    titleTapCount = 0;
+    triggerEasterEgg();
+  }
+});
+function spawnConfetti() {
+  const colors = [COLORS.Luigi, COLORS.Juan, COLORS.Sergio, '#F2A03D', '#2E9B5C'];
+  for (let i = 0; i < 40; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = `${Math.random() * 100}vw`;
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDuration = `${2 + Math.random() * 1.5}s`;
+    piece.style.animationDelay = `${Math.random() * 0.4}s`;
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 4000);
+  }
+}
+function triggerEasterEgg() {
+  spawnConfetti();
+  document.getElementById('egg-message').textContent =
+    EGG_MESSAGES[Math.floor(Math.random() * EGG_MESSAGES.length)];
+  document.getElementById('egg-modal').style.display = 'flex';
+}
+document.getElementById('egg-close-btn').onclick = () => {
+  document.getElementById('egg-modal').style.display = 'none';
+};
 
 async function loadData() {
   try {
@@ -1417,7 +1539,28 @@ function renderMoodTab() {
   renderMoodFilterChips();
   renderCalendar();
   renderStrip();
+  updateMoodNudge();
 }
+
+/* ---------------------------------------------------------------------
+   Check-in nudge — private to whoAmI, doesn't call anyone else out.
+   Dot on the tab persists until they actually check in; the dismissible
+   card only hides itself for the rest of today.
+   --------------------------------------------------------------------- */
+function updateMoodNudge() {
+  const dot = document.getElementById('mood-tab-dot');
+  const card = document.getElementById('mood-nudge-card');
+  if (!dot || !card) return;
+  if (!whoAmI) { dot.style.display = 'none'; card.style.display = 'none'; return; }
+  const done = !!findMoodEntry(whoAmI, todayISO());
+  dot.style.display = done ? 'none' : 'block';
+  const dismissedToday = localStorage.getItem(NUDGE_DISMISS_KEY) === todayISO();
+  card.style.display = (!done && !dismissedToday) ? 'flex' : 'none';
+}
+document.getElementById('mood-nudge-dismiss').onclick = () => {
+  localStorage.setItem(NUDGE_DISMISS_KEY, todayISO());
+  updateMoodNudge();
+};
 
 /* =========================================================================
    CREW AWARDS
@@ -1941,7 +2084,15 @@ function renderMatchList() {
     if (settled) {
       const tag = document.createElement('div');
       tag.className = 'settled-tag';
-      tag.textContent = `Final score: ${m.teamA} ${m.resultA} – ${m.resultB} ${m.teamB}`;
+      const scoreText = document.createElement('span');
+      scoreText.textContent = `Final score: ${m.teamA} ${m.resultA} – ${m.resultB} ${m.teamB}`;
+      tag.appendChild(scoreText);
+      const archiveBtn = document.createElement('button');
+      archiveBtn.className = 'archive-btn';
+      archiveBtn.textContent = 'Archive';
+      archiveBtn.title = 'Lock in any won beer rounds permanently, then remove from this list';
+      archiveBtn.onclick = () => archiveMatch(m.id);
+      tag.appendChild(archiveBtn);
       card.appendChild(tag);
     } else {
       const resultRow = document.createElement('div');
@@ -1973,6 +2124,14 @@ function renderMatchList() {
       };
       resultRow.appendChild(saveBtn);
       card.appendChild(resultRow);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'archive-btn';
+      removeBtn.textContent = 'Remove';
+      removeBtn.title = 'Delete this wager — nothing settled yet, so no beer credit to preserve';
+      removeBtn.style.marginTop = '8px';
+      removeBtn.onclick = () => removeMatch(m.id);
+      card.appendChild(removeBtn);
     }
     wrap.appendChild(card);
   });
@@ -1982,6 +2141,53 @@ function updateLocalPrediction(matchId, person, scoreA, scoreB) {
   if (!pred) { pred = { matchId, person, scoreA, scoreB }; predictions.push(pred); }
   else { pred.scoreA = scoreA; pred.scoreB = scoreB; }
 }
+
+/* ---------------------------------------------------------------------
+   Archive a settled wager — permanently locks any won rounds into
+   baseBeers_<person> BEFORE removing the match, so the Beer Scoreboard
+   total is unaffected by the wager disappearing from the list.
+   --------------------------------------------------------------------- */
+async function archiveMatch(matchId) {
+  const m = matches.find(x => x.id === matchId);
+  if (!m) return;
+  const settled = m.resultA !== null && m.resultA !== undefined && m.resultB !== null && m.resultB !== undefined;
+  if (!settled) { alert('Only settled wagers (with a real result entered) can be archived.'); return; }
+  if (!confirm(`Archive "${m.teamA} vs ${m.teamB}"? Any won beer rounds get locked in permanently, then it's removed from this list.`)) return;
+
+  for (const p of PEOPLE) {
+    const pred = findPrediction(matchId, p);
+    if (pred && pred.scoreA === m.resultA && pred.scoreB === m.resultB) {
+      const updated = Number(settings[`baseBeers_${p}`] || 0) + 1;
+      settings[`baseBeers_${p}`] = updated;
+      try { await apiSetSetting(`baseBeers_${p}`, updated); } catch (e) { console.error('Failed to persist beer credit', e); }
+    }
+  }
+
+  matches = matches.filter(x => x.id !== matchId);
+  predictions = predictions.filter(pr => pr.matchId !== matchId);
+  renderBetsTab();
+  renderWeeklyRecap();
+
+  try { await apiPost({ action: 'deleteMatch', matchId }); } catch (e) { console.error('Failed to remove wager on server', e); }
+}
+
+/* ---------------------------------------------------------------------
+   Remove an unsettled wager — no result yet, so nothing's been won
+   and there's no beer credit to preserve. Simple delete.
+   --------------------------------------------------------------------- */
+async function removeMatch(matchId) {
+  const m = matches.find(x => x.id === matchId);
+  if (!m) return;
+  if (!confirm(`Remove "${m.teamA} vs ${m.teamB}"? It hasn't been settled yet.`)) return;
+
+  matches = matches.filter(x => x.id !== matchId);
+  predictions = predictions.filter(pr => pr.matchId !== matchId);
+  renderBetsTab();
+  renderWeeklyRecap();
+
+  try { await apiPost({ action: 'deleteMatch', matchId }); } catch (e) { console.error('Failed to remove wager on server', e); }
+}
+
 document.getElementById('add-match-btn').onclick = async () => {
   const teamA = document.getElementById('new-match-teamA').value.trim();
   const teamB = document.getElementById('new-match-teamB').value.trim();

@@ -380,6 +380,26 @@
     padding: 5px 9px; cursor: pointer; flex-shrink: 0; white-space: nowrap;
   }
   .archive-btn:hover { border-color: var(--faint); color: var(--ink); }
+
+  /* holidays */
+  .holiday-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 6px;
+    border-radius: 6px; font-size: 13px; transition: background 0.15s ease;
+  }
+  .holiday-row:hover { background: #FAF6EF; }
+  .holiday-date {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted);
+    width: 68px; flex-shrink: 0;
+  }
+  .holiday-label { flex: 1; font-weight: 600; }
+  .holiday-today-tag {
+    font-size: 10px; font-family: 'IBM Plex Mono', monospace; font-weight: 600;
+    color: #fff; background: var(--luigi); padding: 2px 7px; border-radius: 999px; flex-shrink: 0;
+  }
+  .cal-cell.is-holiday::after {
+    content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: #F2A03D;
+  }
   .winner-pick-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
   .winner-pick-name { width: 56px; font-size: 13px; font-weight: 600; flex-shrink: 0; }
 
@@ -557,6 +577,7 @@
     <div class="main-tab" id="tab-mood">Mood Tracker<span class="tab-dot" id="mood-tab-dot"></span></div>
     <div class="main-tab" id="tab-awards">Crew Awards</div>
     <div class="main-tab" id="tab-bets">Football Bets</div>
+    <div class="main-tab" id="tab-vault">🔒 Vault</div>
   </div>
 
   <!-- ===================== TIME CLOCK ===================== -->
@@ -582,6 +603,32 @@
       <div class="panel-label">HOURS LOGGED THIS MONTH</div>
       <div class="panel-sub">Feeds the Grind Mode award on the Crew Awards tab.</div>
       <div id="hours-summary"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">HOLIDAYS</div>
+      <div class="panel-sub">Everyone's holidays can be different — pick who it applies to. Shows up as a marker on the Mood calendar for whoever's selected there.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Who</label>
+          <select id="holiday-person-input">
+            <option value="All">Everyone</option>
+            <option value="Luigi">Luigi</option>
+            <option value="Juan">Juan</option>
+            <option value="Sergio">Sergio</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Date</label>
+          <input type="date" id="holiday-date-input" />
+        </div>
+        <div class="form-field" style="flex: 2 1 200px;">
+          <label class="form-label">What is it</label>
+          <input type="text" id="holiday-label-input" placeholder="e.g. Christmas Day" />
+        </div>
+      </div>
+      <button class="add-btn" id="add-holiday-btn">Add holiday</button>
+      <div id="holiday-list" style="margin-top:14px;"></div>
     </section>
 
     <section class="panel">
@@ -699,6 +746,7 @@
         <div class="legend-item"><span class="legend-swatch" style="background:#8FBF5C"></span> Good</div>
         <div class="legend-item"><span class="legend-swatch" style="background:#2E9B5C"></span> Great</div>
         <div class="legend-item"><span class="legend-swatch" style="background:#F0EBE1"></span> No check-in</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#F2A03D; border-radius:50%; width:6px; height:6px;"></span> Holiday</div>
       </div>
     </section>
 
@@ -797,7 +845,34 @@
 
   </div>
 
-  <footer>Shared with Luigi, Juan &amp; Sergio · data is stored in a shared Google Sheet</footer>
+  <!-- ===================== VAULT (password-gated, WIP) ===================== -->
+  <div class="view" id="view-vault">
+
+    <section class="panel" id="vault-locked">
+      <div class="panel-label">🔒 LOCKED</div>
+      <div class="panel-sub">This tab isn't public yet — enter the password to peek.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Password</label>
+          <input type="password" id="vault-password-input" placeholder="••••••••" />
+        </div>
+      </div>
+      <button class="add-btn" id="vault-unlock-btn">Unlock</button>
+      <div id="vault-error" style="display:none; color:#E0503C; font-size:12px; margin-top:10px; font-family:'IBM Plex Mono',monospace;">Wrong password.</div>
+    </section>
+
+    <section class="panel" id="vault-unlocked" style="display:none;">
+      <div class="panel-label">🚧 UNDER CONSTRUCTION</div>
+      <div class="panel-sub">You're in. Nothing to see yet — this is where two things will live:</div>
+      <div class="empty-state">
+        • <b>Link shortcuts</b> — quick jumps to shared docs, tools, whatever the crew reaches for often.<br><br>
+        • <b>Problem/Solution log</b> — when one of us hits an issue and figures it out, it gets written down here so future-us doesn't have to solve it twice.
+      </div>
+    </section>
+
+  </div>
+
+  <footer id="app-footer">Shared with Luigi, Juan &amp; Sergio · data is stored in a shared Google Sheet</footer>
 </div>
 
 <div class="identity-modal" id="identity-modal">
@@ -811,8 +886,8 @@
 
 <div class="egg-modal" id="egg-modal">
   <div class="egg-card">
-    <div class="egg-eyebrow">🥚 SECRET FOUND</div>
-    <div class="egg-title">Nice tapping.</div>
+    <div class="egg-eyebrow" id="egg-eyebrow">🥚 SECRET FOUND</div>
+    <div class="egg-title" id="egg-title">Nice tapping.</div>
     <div class="egg-message" id="egg-message">—</div>
     <button class="egg-close-btn" id="egg-close-btn">Close</button>
   </div>
@@ -941,8 +1016,10 @@ function applyIdentityDefaults() {
     indicator.textContent = `You're ${whoAmI}`;
     const mp = document.getElementById('manual-person');
     const bp = document.getElementById('backfill-person');
+    const hp = document.getElementById('holiday-person-input');
     if (mp) mp.value = whoAmI;
     if (bp) bp.value = whoAmI;
+    if (hp) hp.value = whoAmI;
   } else {
     indicator.textContent = "Who's this?";
   }
@@ -957,10 +1034,55 @@ function syncMoodToIdentity() {
 }
 document.getElementById('whoami-switch-btn').onclick = showIdentityModal;
 
-/* ---------------------------------------------------------------------
-   Secret — tap the app title 7 times in quick succession.
-   Completely invisible until found; no hint anywhere in the UI.
-   --------------------------------------------------------------------- */
+/* =========================================================================
+   SECRETS — 4 hidden easter eggs. No hints anywhere in the UI; each has
+   a different unlock method on purpose.
+
+   1. Tap the app title 7 times fast.
+   2. Classic Konami code on a keyboard: ↑ ↑ ↓ ↓ ← → ← → B A
+   3. Type the word "grind" anywhere on the page (not while typing in a
+      form field).
+   4. Press and hold the footer text for 3 seconds.
+   ========================================================================= */
+function spawnConfetti() {
+  const colors = [COLORS.Luigi, COLORS.Juan, COLORS.Sergio, '#F2A03D', '#2E9B5C'];
+  for (let i = 0; i < 40; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = `${Math.random() * 100}vw`;
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDuration = `${2 + Math.random() * 1.5}s`;
+    piece.style.animationDelay = `${Math.random() * 0.4}s`;
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 4000);
+  }
+}
+function spawnEmojiShower(emojis) {
+  for (let i = 0; i < 30; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece emoji-piece';
+    piece.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    piece.style.left = `${Math.random() * 100}vw`;
+    piece.style.animationDuration = `${2 + Math.random() * 1.5}s`;
+    piece.style.animationDelay = `${Math.random() * 0.4}s`;
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 4000);
+  }
+}
+function showEgg({ eyebrow, title, messages, shower }) {
+  if (shower === 'confetti') spawnConfetti();
+  if (shower === 'beer') spawnEmojiShower(['🍺', '🍻']);
+  document.getElementById('egg-eyebrow').textContent = eyebrow;
+  document.getElementById('egg-title').textContent = title;
+  document.getElementById('egg-message').textContent =
+    messages[Math.floor(Math.random() * messages.length)];
+  document.getElementById('egg-modal').style.display = 'flex';
+}
+document.getElementById('egg-close-btn').onclick = () => {
+  document.getElementById('egg-modal').style.display = 'none';
+};
+
+/* --- Secret 1: tap the title 7 times fast --- */
 const EGG_MESSAGES = [
   "The Punch Board has been watching. It approves of your dedication to nonsense.",
   "You found the secret. There is no prize. The prize was the taps you made along the way.",
@@ -976,41 +1098,100 @@ document.getElementById('app-title').addEventListener('click', () => {
   titleTapResetTimer = setTimeout(() => { titleTapCount = 0; }, 1500);
   if (titleTapCount >= 7) {
     titleTapCount = 0;
-    triggerEasterEgg();
+    showEgg({ eyebrow: '🥚 SECRET FOUND', title: 'Nice tapping.', messages: EGG_MESSAGES, shower: 'confetti' });
   }
 });
-function spawnConfetti() {
-  const colors = [COLORS.Luigi, COLORS.Juan, COLORS.Sergio, '#F2A03D', '#2E9B5C'];
-  for (let i = 0; i < 40; i++) {
-    const piece = document.createElement('div');
-    piece.className = 'confetti-piece';
-    piece.style.left = `${Math.random() * 100}vw`;
-    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
-    piece.style.animationDuration = `${2 + Math.random() * 1.5}s`;
-    piece.style.animationDelay = `${Math.random() * 0.4}s`;
-    document.body.appendChild(piece);
-    setTimeout(() => piece.remove(), 4000);
+
+/* --- Secret 2: classic Konami code on a keyboard --- */
+const KONAMI_SEQUENCE = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','KeyB','KeyA'];
+const KONAMI_MESSAGES = [
+  "Up up down down left right left right B A. Some things never die.",
+  "30 extra lives added to your beer tally. (Not really. We checked. It's not really.)",
+  "You've unlocked... nothing. But we respect the muscle memory.",
+];
+let konamiBuffer = [];
+document.addEventListener('keydown', (e) => {
+  konamiBuffer.push(e.code);
+  konamiBuffer = konamiBuffer.slice(-KONAMI_SEQUENCE.length);
+  if (konamiBuffer.join(',') === KONAMI_SEQUENCE.join(',')) {
+    konamiBuffer = [];
+    showEgg({ eyebrow: '🎮 KONAMI MASTER', title: 'Old school.', messages: KONAMI_MESSAGES, shower: 'confetti' });
+  }
+});
+
+/* --- Secret 3: type "grind" anywhere on the page --- */
+const SECRET_WORD = 'grind';
+const GRIND_MESSAGES = [
+  "Grind mode activated. Somewhere, Grind Mode the award felt that.",
+  "Make it rain. Or at least make it drizzle — it's beer, be responsible.",
+  "You typed a word into a webpage with no text box. Bold move. Respected.",
+];
+let wordBuffer = '';
+document.addEventListener('keydown', (e) => {
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return; // don't hijack typing in forms
+  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+    wordBuffer = (wordBuffer + e.key.toLowerCase()).slice(-SECRET_WORD.length);
+    if (wordBuffer === SECRET_WORD) {
+      wordBuffer = '';
+      showEgg({ eyebrow: '🍺 MAKE IT RAIN', title: 'Grind mode activated.', messages: GRIND_MESSAGES, shower: 'beer' });
+    }
+  }
+});
+
+/* --- Secret 4: press and hold the footer for 3 seconds --- */
+const FOOTER_MESSAGES = [
+  "Built late at night, fueled by beer bets and mild sibling rivalry. Thanks for using it.",
+  "If you're reading this, the app worked. That was never guaranteed.",
+  "This message was hidden here on purpose, for exactly one person to find eventually. Hi.",
+];
+let footerHoldTimer = null;
+function startFooterHold() {
+  footerHoldTimer = setTimeout(() => {
+    showEgg({ eyebrow: '📝 BEHIND THE SCENES', title: 'You held on.', messages: FOOTER_MESSAGES, shower: 'none' });
+  }, 3000);
+}
+function cancelFooterHold() { clearTimeout(footerHoldTimer); }
+const appFooterEl = document.getElementById('app-footer');
+appFooterEl.addEventListener('mousedown', startFooterHold);
+appFooterEl.addEventListener('touchstart', startFooterHold, { passive: true });
+appFooterEl.addEventListener('mouseup', cancelFooterHold);
+appFooterEl.addEventListener('mouseleave', cancelFooterHold);
+appFooterEl.addEventListener('touchend', cancelFooterHold);
+appFooterEl.addEventListener('touchcancel', cancelFooterHold);
+
+/* ---------------------------------------------------------------------
+   Archived wagers — persisted via the existing 'setSetting' action
+   (same one actualWinner already uses), so this works without needing
+   any new backend support. Once a match id is in this list it's
+   filtered out of `matches` on every load — permanently hidden and
+   never recounted, which is what makes the beer credit stick exactly
+   once instead of being re-earned every refresh.
+   --------------------------------------------------------------------- */
+function getArchivedMatchIds() {
+  try {
+    return JSON.parse(settings.archivedMatchIds || '[]');
+  } catch (e) {
+    return [];
   }
 }
-function triggerEasterEgg() {
-  spawnConfetti();
-  document.getElementById('egg-message').textContent =
-    EGG_MESSAGES[Math.floor(Math.random() * EGG_MESSAGES.length)];
-  document.getElementById('egg-modal').style.display = 'flex';
+async function addArchivedMatchId(matchId) {
+  const ids = getArchivedMatchIds();
+  if (!ids.includes(matchId)) ids.push(matchId);
+  settings.archivedMatchIds = JSON.stringify(ids);
+  try { await apiSetSetting('archivedMatchIds', settings.archivedMatchIds); } catch (e) { console.error('Failed to persist archived match list', e); }
 }
-document.getElementById('egg-close-btn').onclick = () => {
-  document.getElementById('egg-modal').style.display = 'none';
-};
 
 async function loadData() {
   try {
     const data = await apiGetAll();
     entries = data.entries || [];
     moodEntries = data.moodEntries || [];
-    matches = data.matches || [];
-    predictions = data.predictions || [];
-    winnerPicks = data.winnerPicks || [];
     settings = data.settings || {};
+    const archivedIds = getArchivedMatchIds();
+    matches = (data.matches || []).filter(m => !archivedIds.includes(m.id));
+    predictions = (data.predictions || []).filter(pr => !archivedIds.includes(pr.matchId));
+    winnerPicks = data.winnerPicks || [];
     syncMoodToIdentity(); // re-derive today's ratings for whoAmI now that real data is in
   } catch (e) {
     console.error('Failed to load data', e);
@@ -1286,7 +1467,87 @@ function renderTimeTab() {
   renderLeaderboard();
   renderRecentLog();
   renderHoursSummary();
+  renderHolidays();
 }
+
+/* ---------------------------------------------------------------------
+   Holidays — persisted via the same settings-based approach as the
+   archived match list, so no backend changes are needed for this to
+   work right away.
+   --------------------------------------------------------------------- */
+function getHolidays() {
+  try {
+    return JSON.parse(settings.holidays || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+async function saveHolidays(list) {
+  settings.holidays = JSON.stringify(list);
+  try { await apiSetSetting('holidays', settings.holidays); } catch (e) { console.error('Failed to save holidays', e); }
+}
+function renderHolidays() {
+  const wrap = document.getElementById('holiday-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const holidays = getHolidays().slice().sort((a, b) => a.date.localeCompare(b.date));
+  if (holidays.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No holidays added yet.</div>';
+    return;
+  }
+  const todayStr = todayISO();
+  holidays.forEach(h => {
+    const row = document.createElement('div');
+    row.className = 'holiday-row';
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = h.person === 'All' ? 'var(--faint)' : COLORS[h.person];
+    dot.title = h.person === 'All' ? 'Everyone' : h.person;
+    row.appendChild(dot);
+    const date = document.createElement('span');
+    date.className = 'holiday-date';
+    date.textContent = new Date(h.date + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short' });
+    row.appendChild(date);
+    const label = document.createElement('span');
+    label.className = 'holiday-label';
+    label.textContent = h.person === 'All' ? h.label : `${h.label} · ${h.person}`;
+    row.appendChild(label);
+    if (h.date === todayStr) {
+      const tag = document.createElement('span');
+      tag.className = 'holiday-today-tag';
+      tag.textContent = 'TODAY';
+      row.appendChild(tag);
+    }
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.textContent = '✕';
+    del.title = 'Remove this holiday';
+    del.onclick = async () => {
+      const updated = getHolidays().filter(x => x.id !== h.id);
+      await saveHolidays(updated);
+      renderHolidays();
+      renderCalendar();
+    };
+    row.appendChild(del);
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('add-holiday-btn').onclick = async () => {
+  const personInput = document.getElementById('holiday-person-input');
+  const dateInput = document.getElementById('holiday-date-input');
+  const labelInput = document.getElementById('holiday-label-input');
+  const person = personInput.value;
+  const date = dateInput.value;
+  const label = labelInput.value.trim();
+  if (!date || !label) { alert('Enter both a date and what it is.'); return; }
+  const holiday = { id: `h-${Date.now()}`, date, label, person };
+  const updated = [...getHolidays(), holiday];
+  await saveHolidays(updated);
+  dateInput.value = '';
+  labelInput.value = '';
+  renderHolidays();
+  renderCalendar();
+};
 
 document.getElementById('toggle-lifetime').onclick = () => {
   viewMode = 'lifetime';
@@ -1472,6 +1733,11 @@ function renderCalendar() {
   const selected = [...moodFilters];
   const maps = {};
   selected.forEach(p => { maps[p] = personMoodMap(p); });
+  const holidayDates = new Set(
+    getHolidays()
+      .filter(h => h.person === 'All' || selected.includes(h.person))
+      .map(h => h.date)
+  );
 
   for (let i = 0; i < firstDow; i++) {
     const el = document.createElement('div');
@@ -1486,7 +1752,7 @@ function renderCalendar() {
     const val = vals.length > 0 ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
     if (val !== null) monthAverages.push(val);
     const el = document.createElement('div');
-    el.className = 'cal-cell' + (val === null ? ' no-data' : '') + (dateStr === todayStr ? ' today' : '');
+    el.className = 'cal-cell' + (val === null ? ' no-data' : '') + (dateStr === todayStr ? ' today' : '') + (holidayDates.has(dateStr) ? ' is-holiday' : '');
     el.style.background = moodColor(val);
     el.style.color = val === null ? 'var(--faint)' : 'rgba(255,255,255,0.95)';
     el.style.fontWeight = val === null ? '400' : '600';
@@ -1739,28 +2005,11 @@ function computeWeeklyRecap() {
     if (avg > bestMoodAvg) { bestMoodAvg = avg; bestMoodDay = d; }
   });
 
-  // Closest bet: smallest total goal-difference among settled, non-exact predictions
-  let closestBet = null, closestDiff = Infinity;
-  matches.forEach(m => {
-    if (m.resultA === null || m.resultA === undefined || m.resultB === null || m.resultB === undefined) return;
-    PEOPLE.forEach(p => {
-      const pred = findPrediction(m.id, p);
-      if (!pred || pred.scoreA === null || pred.scoreB === null) return;
-      const diff = Math.abs(pred.scoreA - m.resultA) + Math.abs(pred.scoreB - m.resultB);
-      if (diff === 0) return; // exact hits already celebrated on the beer scoreboard
-      if (diff < closestDiff) {
-        closestDiff = diff;
-        closestBet = { person: p, match: m, pred };
-      }
-    });
-  });
-
   return {
     busiestDay: busiestDay ? dayLabel(busiestDay) : null,
     busiestHours,
     bestMoodDay: bestMoodDay ? dayLabel(bestMoodDay) : null,
-    bestMoodAvg,
-    closestBet
+    bestMoodAvg
   };
 }
 function renderWeeklyRecap() {
@@ -1773,32 +2022,18 @@ function renderWeeklyRecap() {
   wrap.innerHTML = '';
 
   const busyItem = document.createElement('div');
-  busyItem.className = 'recap-item';
+  busyItem.className = 'recap-item full';
   busyItem.innerHTML = `<div class="recap-tag">Busiest Day</div>
     <div class="recap-val">${r.busiestDay || '—'}</div>
     <div class="recap-sub">${r.busiestDay ? `${r.busiestHours.toFixed(1)} combined hrs` : 'No shifts logged yet'}</div>`;
   wrap.appendChild(busyItem);
 
   const moodItem = document.createElement('div');
-  moodItem.className = 'recap-item';
+  moodItem.className = 'recap-item full';
   moodItem.innerHTML = `<div class="recap-tag">Best Mood Day</div>
     <div class="recap-val">${r.bestMoodDay || '—'}</div>
     <div class="recap-sub">${r.bestMoodDay ? `Crew avg ${r.bestMoodAvg.toFixed(1)} / 5` : 'No check-ins yet'}</div>`;
   wrap.appendChild(moodItem);
-
-  const betItem = document.createElement('div');
-  betItem.className = 'recap-item full';
-  if (r.closestBet) {
-    const { person, match, pred } = r.closestBet;
-    betItem.innerHTML = `<div class="recap-tag">Closest Bet</div>
-      <div class="recap-val">${person} guessed ${match.teamA} ${pred.scoreA}–${pred.scoreB} ${match.teamB}</div>
-      <div class="recap-sub">Real score was ${match.resultA}–${match.resultB}</div>`;
-  } else {
-    betItem.innerHTML = `<div class="recap-tag">Closest Bet</div>
-      <div class="recap-val">Nothing settled yet</div>
-      <div class="recap-sub">Enter a real result on Football Bets to see this fill in</div>`;
-  }
-  wrap.appendChild(betItem);
 }
 
 /* ---------------------------------------------------------------------
@@ -2144,8 +2379,10 @@ function updateLocalPrediction(matchId, person, scoreA, scoreB) {
 
 /* ---------------------------------------------------------------------
    Archive a settled wager — permanently locks any won rounds into
-   baseBeers_<person> BEFORE removing the match, so the Beer Scoreboard
-   total is unaffected by the wager disappearing from the list.
+   baseBeers_<person> exactly once, then adds the match id to the
+   persisted archived list so it's filtered out on every future load.
+   This is what stops it from reappearing after a refresh AND stops the
+   win from being re-counted (both were the same underlying bug).
    --------------------------------------------------------------------- */
 async function archiveMatch(matchId) {
   const m = matches.find(x => x.id === matchId);
@@ -2163,29 +2400,35 @@ async function archiveMatch(matchId) {
     }
   }
 
+  await addArchivedMatchId(matchId);
   matches = matches.filter(x => x.id !== matchId);
   predictions = predictions.filter(pr => pr.matchId !== matchId);
   renderBetsTab();
   renderWeeklyRecap();
 
-  try { await apiPost({ action: 'deleteMatch', matchId }); } catch (e) { console.error('Failed to remove wager on server', e); }
+  // Best-effort real cleanup — harmless no-op until a matching backend
+  // handler exists; the archived-list filter above is what actually
+  // guarantees correctness regardless of whether this succeeds.
+  try { await apiPost({ action: 'deleteMatch', matchId }); } catch (e) { /* not required for correctness */ }
 }
 
 /* ---------------------------------------------------------------------
    Remove an unsettled wager — no result yet, so nothing's been won
-   and there's no beer credit to preserve. Simple delete.
+   and there's no beer credit to preserve. Same persisted-hide approach
+   so it doesn't come back after a refresh either.
    --------------------------------------------------------------------- */
 async function removeMatch(matchId) {
   const m = matches.find(x => x.id === matchId);
   if (!m) return;
   if (!confirm(`Remove "${m.teamA} vs ${m.teamB}"? It hasn't been settled yet.`)) return;
 
+  await addArchivedMatchId(matchId);
   matches = matches.filter(x => x.id !== matchId);
   predictions = predictions.filter(pr => pr.matchId !== matchId);
   renderBetsTab();
   renderWeeklyRecap();
 
-  try { await apiPost({ action: 'deleteMatch', matchId }); } catch (e) { console.error('Failed to remove wager on server', e); }
+  try { await apiPost({ action: 'deleteMatch', matchId }); } catch (e) { /* not required for correctness */ }
 }
 
 document.getElementById('add-match-btn').onclick = async () => {
@@ -2259,20 +2502,51 @@ document.getElementById('tab-time').onclick = () => switchMainTab('time');
 document.getElementById('tab-mood').onclick = () => switchMainTab('mood');
 document.getElementById('tab-awards').onclick = () => switchMainTab('awards');
 document.getElementById('tab-bets').onclick = () => switchMainTab('bets');
+document.getElementById('tab-vault').onclick = () => switchMainTab('vault');
 function switchMainTab(which) {
   document.getElementById('tab-time').classList.toggle('active', which === 'time');
   document.getElementById('tab-mood').classList.toggle('active', which === 'mood');
   document.getElementById('tab-awards').classList.toggle('active', which === 'awards');
   document.getElementById('tab-bets').classList.toggle('active', which === 'bets');
+  document.getElementById('tab-vault').classList.toggle('active', which === 'vault');
   document.getElementById('view-time').classList.toggle('active', which === 'time');
   document.getElementById('view-mood').classList.toggle('active', which === 'mood');
   document.getElementById('view-awards').classList.toggle('active', which === 'awards');
   document.getElementById('view-bets').classList.toggle('active', which === 'bets');
+  document.getElementById('view-vault').classList.toggle('active', which === 'vault');
   if (which === 'time') renderTimeTab();
   if (which === 'mood') renderMoodTab();
   if (which === 'awards') renderAwardsTab();
   if (which === 'bets') renderBetsTab();
+  if (which === 'vault') renderVaultTab();
 }
+
+/* ---------------------------------------------------------------------
+   Vault — password-gated, work in progress. Unlock state persists per
+   device via localStorage so it doesn't ask every time.
+   --------------------------------------------------------------------- */
+const VAULT_PASSWORD = '16112000';
+const VAULT_UNLOCK_KEY = 'punchboard-vault-unlocked';
+function renderVaultTab() {
+  const unlocked = localStorage.getItem(VAULT_UNLOCK_KEY) === 'true';
+  document.getElementById('vault-locked').style.display = unlocked ? 'none' : 'block';
+  document.getElementById('vault-unlocked').style.display = unlocked ? 'block' : 'none';
+}
+function attemptVaultUnlock() {
+  const input = document.getElementById('vault-password-input');
+  if (input.value === VAULT_PASSWORD) {
+    localStorage.setItem(VAULT_UNLOCK_KEY, 'true');
+    document.getElementById('vault-error').style.display = 'none';
+    input.value = '';
+    renderVaultTab();
+  } else {
+    document.getElementById('vault-error').style.display = 'block';
+  }
+}
+document.getElementById('vault-unlock-btn').onclick = attemptVaultUnlock;
+document.getElementById('vault-password-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') attemptVaultUnlock();
+});
 
 /* ---------------------------------------------------------------------
    Init

@@ -581,6 +581,56 @@
     border: none; border-radius: 6px; background: var(--ink); color: #fff;
     font-size: 13px; font-weight: 600; padding: 9px 16px; cursor: pointer; font-family: inherit;
   }
+
+  /* egg collection drawer */
+  .egg-drawer-toggle {
+    position: fixed; top: 50%; right: 0; transform: translateY(-50%);
+    background: var(--ink); color: var(--bg); border: none;
+    padding: 12px 7px; border-radius: 8px 0 0 8px; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em;
+    writing-mode: vertical-rl; text-orientation: mixed;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.15); z-index: 900;
+  }
+  .egg-drawer {
+    position: fixed; top: 0; right: 0; height: 100vh; width: min(320px, 88vw);
+    background: var(--bg); border-left: 1px solid var(--line);
+    box-shadow: -8px 0 24px rgba(0,0,0,0.12); z-index: 950;
+    transform: translateX(100%); transition: transform 0.25s ease;
+    overflow-y: auto; padding: 20px 16px 40px;
+  }
+  .egg-drawer.open { transform: translateX(0); }
+  .egg-drawer-head {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;
+  }
+  .egg-drawer-title {
+    font-family: 'Spectral', Georgia, serif; font-size: 18px; font-weight: 700;
+  }
+  .egg-drawer-close {
+    background: none; border: none; font-size: 18px; color: var(--faint); cursor: pointer; padding: 4px;
+  }
+  .egg-drawer-sub { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 16px; }
+  .egg-row {
+    border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
+    background: #fff;
+  }
+  .egg-row.found { border-color: #2E9B5C; background: rgba(46,155,92,0.06); }
+  .egg-row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .egg-row-icon { font-size: 15px; flex-shrink: 0; }
+  .egg-row-name { font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 14px; flex: 1; }
+  .egg-row-dots { display: flex; gap: 4px; flex-shrink: 0; }
+  .egg-row-dots .egg-mini-dot {
+    width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line); background: #fff;
+  }
+  .egg-row-dots .egg-mini-dot.got { border-color: transparent; }
+  .egg-hint-btn {
+    background: none; border: 1px solid var(--line); border-radius: 999px; color: var(--muted);
+    font-size: 10px; font-family: 'IBM Plex Mono', monospace; padding: 3px 9px; cursor: pointer;
+  }
+  .egg-hint-text {
+    font-size: 12px; color: var(--muted); margin-top: 8px; padding-top: 8px;
+    border-top: 1px dashed var(--line); line-height: 1.5; display: none;
+  }
+  .egg-hint-text.open { display: block; }
 </style>
 </head>
 <body>
@@ -911,26 +961,31 @@
     <div id="vault-unlocked" style="display:none;">
 
       <section class="panel">
-        <div class="panel-label">📋 PATCH NOTES</div>
+        <div class="leader-header-row">
+          <div class="panel-label">📋 PATCH NOTES</div>
+          <button class="archive-btn" id="patch-notes-toggle-btn">Show</button>
+        </div>
         <div class="panel-sub">A running log of what's changed in The Punch Board, so nobody has to wonder "wait, when did that show up?"</div>
-        <div class="form-row">
-          <div class="form-field">
-            <label class="form-label">Date</label>
-            <input type="date" id="patch-date-input" />
+        <div id="patch-notes-content" style="display:none;">
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Date</label>
+              <input type="date" id="patch-date-input" />
+            </div>
+            <div class="form-field" style="flex: 2 1 200px;">
+              <label class="form-label">Title</label>
+              <input type="text" id="patch-title-input" placeholder="e.g. Added holiday tracking" />
+            </div>
           </div>
-          <div class="form-field" style="flex: 2 1 200px;">
-            <label class="form-label">Title</label>
-            <input type="text" id="patch-title-input" placeholder="e.g. Added holiday tracking" />
+          <div class="form-row">
+            <div class="form-field" style="flex: 1 1 100%;">
+              <label class="form-label">Details</label>
+              <textarea id="patch-details-input" rows="3" placeholder="What changed, one line per item is fine" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+            </div>
           </div>
+          <button class="add-btn" id="add-patch-btn">Add patch note</button>
+          <div id="patch-notes-list" style="margin-top:16px;"></div>
         </div>
-        <div class="form-row">
-          <div class="form-field" style="flex: 1 1 100%;">
-            <label class="form-label">Details</label>
-            <textarea id="patch-details-input" rows="3" placeholder="What changed, one line per item is fine" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
-          </div>
-        </div>
-        <button class="add-btn" id="add-patch-btn">Add patch note</button>
-        <div id="patch-notes-list" style="margin-top:16px;"></div>
       </section>
 
       <section class="panel">
@@ -960,11 +1015,6 @@
         <div id="ticket-list" style="margin-top:16px;"></div>
       </section>
 
-      <section class="panel">
-        <div class="panel-label">🚧 COMING SOON</div>
-        <div class="empty-state">• <b>Link shortcuts</b> — quick jumps to shared docs, tools, whatever the crew reaches for often.</div>
-      </section>
-
     </div>
 
   </div>
@@ -988,6 +1038,16 @@
     <div class="egg-message" id="egg-message">—</div>
     <button class="egg-close-btn" id="egg-close-btn">Close</button>
   </div>
+</div>
+
+<button class="egg-drawer-toggle" id="egg-drawer-toggle">🥚 EGGS</button>
+<div class="egg-drawer" id="egg-drawer">
+  <div class="egg-drawer-head">
+    <div class="egg-drawer-title">Secrets</div>
+    <button class="egg-drawer-close" id="egg-drawer-close">✕</button>
+  </div>
+  <div class="egg-drawer-sub">6 hidden somewhere in the app. Dots show who on the crew has found each one — no mechanism given away unless you tap Hint.</div>
+  <div id="egg-drawer-list"></div>
 </div>
 
 <script>
@@ -1138,8 +1198,11 @@ function syncMoodToIdentity() {
 document.getElementById('whoami-switch-btn').onclick = showIdentityModal;
 
 /* =========================================================================
-   SECRETS — 4 hidden easter eggs. No hints anywhere in the UI; each has
-   a different unlock method on purpose.
+   SECRETS — 6 hidden easter eggs. No hints anywhere in the normal UI;
+   each has a different unlock method on purpose. The 🥚 EGGS drawer on
+   the right lets anyone check progress (theirs and the crew's) and
+   optionally reveal a hint per egg, without spelling out the mechanism
+   unless asked.
 
    1. Tap the app title 7 times fast.
    2. Classic Konami code on a keyboard: ↑ ↑ ↓ ↓ ← → ← → B A
@@ -1147,7 +1210,18 @@ document.getElementById('whoami-switch-btn').onclick = showIdentityModal;
       form field).
    4. Tap the crew color dots on Time Clock in the order:
       Sergio → Luigi → Juan.
+   5. Press and hold the 🔒 Vault tab label for 3 seconds.
+   6. Leave the app open and untouched for 60 seconds.
    ========================================================================= */
+const EGG_DEFINITIONS = [
+  { key: 'title-tap',    name: 'Motormouth', hint: "Something about the app's own name wants attention. Multiple times. Quickly." },
+  { key: 'konami',       name: 'Old School',  hint: "Old-school gamers might recognize this one. Needs a physical keyboard." },
+  { key: 'grind-word',   name: 'Loose Lips',  hint: "Type it. Anywhere on the page. No text box required." },
+  { key: 'dot-sequence', name: 'Roll Call',   hint: "The colored dots on Time Clock know an order. Sergio goes first." },
+  { key: 'vault-hold',   name: 'Patience',    hint: "Some locks reward whoever doesn't let go too soon." },
+  { key: 'idle',         name: 'Statue',      hint: "Sometimes the trick is doing absolutely nothing for a while." },
+];
+
 function spawnConfetti() {
   const colors = [COLORS.Luigi, COLORS.Juan, COLORS.Sergio, '#F2A03D', '#2E9B5C'];
   for (let i = 0; i < 40; i++) {
@@ -1173,7 +1247,28 @@ function spawnEmojiShower(emojis) {
     setTimeout(() => piece.remove(), 4000);
   }
 }
-function showEgg({ eyebrow, title, messages, shower }) {
+
+/* ---------------------------------------------------------------------
+   Per-person "found" tracking — persisted via the same settings-based
+   approach as everything else (holidays, patch notes, etc). Requires
+   a saved identity (whoAmI) to attribute the find; if nobody's picked
+   an identity yet, the egg still fires but isn't recorded.
+   --------------------------------------------------------------------- */
+function getEggsFound() {
+  try { return JSON.parse(settings.eggsFound || '{}'); } catch (e) { return {}; }
+}
+async function recordEggFound(eggKey) {
+  if (!whoAmI || !eggKey) return;
+  const found = getEggsFound();
+  if (!found[whoAmI]) found[whoAmI] = [];
+  if (found[whoAmI].includes(eggKey)) return; // already recorded — nothing new to save
+  found[whoAmI].push(eggKey);
+  settings.eggsFound = JSON.stringify(found);
+  try { await apiSetSetting('eggsFound', settings.eggsFound); } catch (e) { console.error('Failed to save egg find', e); }
+  renderEggDrawer();
+}
+
+function showEgg({ eyebrow, title, messages, shower, eggKey }) {
   if (shower === 'confetti') spawnConfetti();
   if (shower === 'beer') spawnEmojiShower(['🍺', '🍻']);
   document.getElementById('egg-eyebrow').textContent = eyebrow;
@@ -1181,9 +1276,75 @@ function showEgg({ eyebrow, title, messages, shower }) {
   document.getElementById('egg-message').textContent =
     messages[Math.floor(Math.random() * messages.length)];
   document.getElementById('egg-modal').style.display = 'flex';
+  recordEggFound(eggKey);
 }
 document.getElementById('egg-close-btn').onclick = () => {
   document.getElementById('egg-modal').style.display = 'none';
+};
+
+/* ---------------------------------------------------------------------
+   The drawer itself — toggle button pinned to the right edge, slides
+   a panel in. Hint-open state is local/session-only, not persisted.
+   --------------------------------------------------------------------- */
+let openHintKeys = new Set();
+function renderEggDrawer() {
+  const wrap = document.getElementById('egg-drawer-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const found = getEggsFound();
+  EGG_DEFINITIONS.forEach(def => {
+    const anyoneFound = PEOPLE.some(p => (found[p] || []).includes(def.key));
+    const row = document.createElement('div');
+    row.className = 'egg-row' + (anyoneFound ? ' found' : '');
+
+    const top = document.createElement('div');
+    top.className = 'egg-row-top';
+    const icon = document.createElement('span');
+    icon.className = 'egg-row-icon';
+    icon.textContent = anyoneFound ? '🏆' : '🥚';
+    top.appendChild(icon);
+    const name = document.createElement('span');
+    name.className = 'egg-row-name';
+    name.textContent = def.name;
+    top.appendChild(name);
+    const dots = document.createElement('div');
+    dots.className = 'egg-row-dots';
+    PEOPLE.forEach(p => {
+      const d = document.createElement('span');
+      const got = (found[p] || []).includes(def.key);
+      d.className = 'egg-mini-dot' + (got ? ' got' : '');
+      d.style.background = got ? COLORS[p] : '#fff';
+      d.title = got ? `${p} found this` : p;
+      dots.appendChild(d);
+    });
+    top.appendChild(dots);
+    row.appendChild(top);
+
+    const hintBtn = document.createElement('button');
+    hintBtn.className = 'egg-hint-btn';
+    const isOpen = openHintKeys.has(def.key);
+    hintBtn.textContent = isOpen ? 'Hide hint' : 'Show hint';
+    hintBtn.onclick = () => {
+      if (openHintKeys.has(def.key)) openHintKeys.delete(def.key);
+      else openHintKeys.add(def.key);
+      renderEggDrawer();
+    };
+    row.appendChild(hintBtn);
+
+    const hintText = document.createElement('div');
+    hintText.className = 'egg-hint-text' + (isOpen ? ' open' : '');
+    hintText.textContent = def.hint;
+    row.appendChild(hintText);
+
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('egg-drawer-toggle').onclick = () => {
+  document.getElementById('egg-drawer').classList.add('open');
+  renderEggDrawer();
+};
+document.getElementById('egg-drawer-close').onclick = () => {
+  document.getElementById('egg-drawer').classList.remove('open');
 };
 
 /* --- Secret 1: tap the title 7 times fast --- */
@@ -1202,7 +1363,7 @@ document.getElementById('app-title').addEventListener('click', () => {
   titleTapResetTimer = setTimeout(() => { titleTapCount = 0; }, 1500);
   if (titleTapCount >= 7) {
     titleTapCount = 0;
-    showEgg({ eyebrow: '🥚 SECRET FOUND', title: 'Nice tapping.', messages: EGG_MESSAGES, shower: 'confetti' });
+    showEgg({ eyebrow: '🥚 SECRET FOUND', title: 'Nice tapping.', messages: EGG_MESSAGES, shower: 'confetti', eggKey: 'title-tap' });
   }
 });
 
@@ -1219,7 +1380,7 @@ document.addEventListener('keydown', (e) => {
   konamiBuffer = konamiBuffer.slice(-KONAMI_SEQUENCE.length);
   if (konamiBuffer.join(',') === KONAMI_SEQUENCE.join(',')) {
     konamiBuffer = [];
-    showEgg({ eyebrow: '🎮 KONAMI MASTER', title: 'Old school.', messages: KONAMI_MESSAGES, shower: 'confetti' });
+    showEgg({ eyebrow: '🎮 KONAMI MASTER', title: 'Old school.', messages: KONAMI_MESSAGES, shower: 'confetti', eggKey: 'konami' });
   }
 });
 
@@ -1238,7 +1399,7 @@ document.addEventListener('keydown', (e) => {
     wordBuffer = (wordBuffer + e.key.toLowerCase()).slice(-SECRET_WORD.length);
     if (wordBuffer === SECRET_WORD) {
       wordBuffer = '';
-      showEgg({ eyebrow: '🍺 MAKE IT RAIN', title: 'Grind mode activated.', messages: GRIND_MESSAGES, shower: 'beer' });
+      showEgg({ eyebrow: '🍺 MAKE IT RAIN', title: 'Grind mode activated.', messages: GRIND_MESSAGES, shower: 'beer', eggKey: 'grind-word' });
     }
   }
 });
@@ -1259,9 +1420,47 @@ function handleDotTap(person) {
   dotTapSequence = dotTapSequence.slice(-SECRET_DOT_ORDER.length);
   if (dotTapSequence.join(',') === SECRET_DOT_ORDER.join(',')) {
     dotTapSequence = [];
-    showEgg({ eyebrow: '🎯 CREW ROLL CALL', title: 'Order acknowledged.', messages: DOT_MESSAGES, shower: 'confetti' });
+    showEgg({ eyebrow: '🎯 CREW ROLL CALL', title: 'Order acknowledged.', messages: DOT_MESSAGES, shower: 'confetti', eggKey: 'dot-sequence' });
   }
 }
+
+/* --- Secret 5: press and hold the 🔒 Vault tab label for 3 seconds --- */
+const VAULT_HOLD_MESSAGES = [
+  "Some things just take patience. Congratulations on having some.",
+  "You held on. The lock respects that, even though it did nothing.",
+  "Three seconds well spent. Or wasted. Depends on your outlook.",
+];
+let vaultHoldTimer = null;
+function startVaultHold() {
+  vaultHoldTimer = setTimeout(() => {
+    showEgg({ eyebrow: '🔐 PATIENCE PAYS', title: 'You held on.', messages: VAULT_HOLD_MESSAGES, shower: 'confetti', eggKey: 'vault-hold' });
+  }, 3000);
+}
+function cancelVaultHold() { clearTimeout(vaultHoldTimer); }
+const vaultTabEl = document.getElementById('tab-vault');
+vaultTabEl.addEventListener('mousedown', startVaultHold);
+vaultTabEl.addEventListener('touchstart', startVaultHold, { passive: true });
+vaultTabEl.addEventListener('mouseup', cancelVaultHold);
+vaultTabEl.addEventListener('mouseleave', cancelVaultHold);
+vaultTabEl.addEventListener('touchend', cancelVaultHold);
+vaultTabEl.addEventListener('touchcancel', cancelVaultHold);
+
+/* --- Secret 6: leave the app untouched for 60 seconds --- */
+const IDLE_MESSAGES = [
+  "You didn't move. Respect for the stillness.",
+  "60 seconds of doing nothing, tracked and rewarded. Efficient use of a break.",
+  "The app got bored waiting, so it made this instead.",
+];
+let lastActivityTime = Date.now();
+['click', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+  document.addEventListener(evt, () => { lastActivityTime = Date.now(); }, { passive: true });
+});
+setInterval(() => {
+  if (Date.now() - lastActivityTime >= 60000) {
+    lastActivityTime = Date.now(); // reset so it can fire again after another idle stretch, not on a loop
+    showEgg({ eyebrow: '🗿 STILL THERE?', title: "You didn't move.", messages: IDLE_MESSAGES, shower: 'confetti', eggKey: 'idle' });
+  }
+}, 5000);
 
 /* ---------------------------------------------------------------------
    Archived wagers — persisted via the existing 'setSetting' action
@@ -1305,6 +1504,7 @@ async function loadData() {
   renderAwardsTab();
   renderBetsTab();
   renderCrewPulse();
+  renderEggDrawer();
 }
 
 /* =========================================================================
@@ -1610,7 +1810,7 @@ function sumHoursInRange(person, startStr, endStr) {
     .filter(e => e.person === person && e.start.slice(0, 10) >= startStr && e.start.slice(0, 10) <= endStr)
     .reduce((sum, e) => sum + e.hours, 0);
 }
-function getOvertimeRange(period) {
+function getOvertimeRange(period, person) {
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
   const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -1621,8 +1821,25 @@ function getOvertimeRange(period) {
     return { start: iso(lastMonthStart), end: iso(lastMonthEnd), label: 'last month' };
   }
   if (period === 'ytd') {
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-    return { start: iso(yearStart), end: todayISO(), label: 'year to date' };
+    const yearStartStr = iso(new Date(now.getFullYear(), 0, 1));
+    const todayStr = todayISO();
+    // Don't count expected days before this person's very first logged
+    // entry ever, if that happens to fall after Jan 1 — otherwise someone
+    // who only started using the app in June looks "behind" for the
+    // five months before it existed for them.
+    const personEntries = entries.filter(e => e.person === person);
+    if (personEntries.length === 0) {
+      return { start: todayStr, end: todayStr, label: 'year to date (no entries yet)' };
+    }
+    const earliestStr = personEntries.reduce((min, e) => {
+      const d = e.start.slice(0, 10);
+      return d < min ? d : min;
+    }, personEntries[0].start.slice(0, 10));
+    if (earliestStr > yearStartStr) {
+      const niceDate = new Date(earliestStr + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short' });
+      return { start: earliestStr, end: todayStr, label: `year to date (since ${niceDate})` };
+    }
+    return { start: yearStartStr, end: todayStr, label: 'year to date' };
   }
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   return { start: iso(monthStart), end: todayISO(), label: 'this month so far' };
@@ -1644,9 +1861,9 @@ function renderOvertimePanel() {
 
   const rows = document.getElementById('overtime-rows');
   rows.innerHTML = '';
-  const range = getOvertimeRange(period);
 
   PEOPLE.forEach(p => {
+    const range = getOvertimeRange(period, p);
     const expectedDays = countExpectedWorkdays(range.start, range.end, p);
     const expectedHours = expectedDays * 8;
     const actualHours = sumHoursInRange(p, range.start, range.end);
@@ -2777,7 +2994,17 @@ async function savePatchNotes(list) {
   settings.patchNotes = JSON.stringify(list);
   try { await apiSetSetting('patchNotes', settings.patchNotes); } catch (e) { console.error('Failed to save patch notes', e); }
 }
+const PATCH_NOTES_VISIBLE_KEY = 'punchboard-patchnotes-visible';
+function isPatchNotesVisible() { return localStorage.getItem(PATCH_NOTES_VISIBLE_KEY) === 'true'; }
+function setPatchNotesVisible(v) { localStorage.setItem(PATCH_NOTES_VISIBLE_KEY, v ? 'true' : 'false'); }
 function renderPatchNotes() {
+  const content = document.getElementById('patch-notes-content');
+  const btn = document.getElementById('patch-notes-toggle-btn');
+  if (content && btn) {
+    const visible = isPatchNotesVisible();
+    content.style.display = visible ? 'block' : 'none';
+    btn.textContent = visible ? 'Hide' : 'Show';
+  }
   const wrap = document.getElementById('patch-notes-list');
   if (!wrap) return;
   wrap.innerHTML = '';
@@ -2821,6 +3048,10 @@ function renderPatchNotes() {
     wrap.appendChild(entry);
   });
 }
+document.getElementById('patch-notes-toggle-btn').onclick = () => {
+  setPatchNotesVisible(!isPatchNotesVisible());
+  renderPatchNotes();
+};
 document.getElementById('add-patch-btn').onclick = async () => {
   const dateInput = document.getElementById('patch-date-input');
   const titleInput = document.getElementById('patch-title-input');

@@ -400,6 +400,37 @@
     content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
     width: 4px; height: 4px; border-radius: 50%; background: #F2A03D;
   }
+
+  /* vault: patch notes */
+  .patch-entry { border-bottom: 1px solid var(--line); padding: 12px 0; }
+  .patch-entry:last-child { border-bottom: none; }
+  .patch-top-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .patch-date { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint); margin-bottom: 3px; }
+  .patch-title { font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 14px; }
+  .patch-details { font-size: 13px; color: var(--muted); line-height: 1.55; white-space: pre-wrap; margin-top: 4px; }
+
+  /* vault: ticket log (FAQ accordion) */
+  .ticket-item {
+    border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; overflow: hidden;
+  }
+  .ticket-question {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    cursor: pointer; background: #fff; transition: background 0.15s ease;
+  }
+  .ticket-question:hover { background: #FAF6EF; }
+  .ticket-question-text { flex: 1; font-weight: 600; font-size: 14px; }
+  .ticket-chevron {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--faint);
+    transition: transform 0.15s ease; flex-shrink: 0;
+  }
+  .ticket-item.open .ticket-chevron { transform: rotate(90deg); }
+  .ticket-answer {
+    display: none; padding: 0 14px 14px 34px; font-size: 13px; color: var(--muted);
+    line-height: 1.55; white-space: pre-wrap; border-top: 1px dashed var(--line); margin-top: -1px; padding-top: 12px;
+  }
+  .ticket-item.open .ticket-answer { display: block; }
+  .ticket-meta { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint); margin-top: 8px; }
+
   .winner-pick-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
   .winner-pick-name { width: 56px; font-size: 13px; font-weight: 600; flex-shrink: 0; }
 
@@ -603,6 +634,15 @@
       <div class="panel-label">HOURS LOGGED THIS MONTH</div>
       <div class="panel-sub">Feeds the Grind Mode award on the Crew Awards tab.</div>
       <div id="hours-summary"></div>
+    </section>
+
+    <section class="panel">
+      <div class="leader-header-row">
+        <div class="panel-label">EXTRA HOURS THIS MONTH</div>
+        <button class="archive-btn" id="overtime-toggle-btn">Show</button>
+      </div>
+      <div class="panel-sub">Assumes an 8h/day expectation, Mon–Fri only — weekends and holidays don't count against anyone.</div>
+      <div id="overtime-content" style="display:none;"></div>
     </section>
 
     <section class="panel">
@@ -861,14 +901,64 @@
       <div id="vault-error" style="display:none; color:#E0503C; font-size:12px; margin-top:10px; font-family:'IBM Plex Mono',monospace;">Wrong password.</div>
     </section>
 
-    <section class="panel" id="vault-unlocked" style="display:none;">
-      <div class="panel-label">🚧 UNDER CONSTRUCTION</div>
-      <div class="panel-sub">You're in. Nothing to see yet — this is where two things will live:</div>
-      <div class="empty-state">
-        • <b>Link shortcuts</b> — quick jumps to shared docs, tools, whatever the crew reaches for often.<br><br>
-        • <b>Problem/Solution log</b> — when one of us hits an issue and figures it out, it gets written down here so future-us doesn't have to solve it twice.
-      </div>
-    </section>
+    <div id="vault-unlocked" style="display:none;">
+
+      <section class="panel">
+        <div class="panel-label">📋 PATCH NOTES</div>
+        <div class="panel-sub">A running log of what's changed in The Punch Board, so nobody has to wonder "wait, when did that show up?"</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Date</label>
+            <input type="date" id="patch-date-input" />
+          </div>
+          <div class="form-field" style="flex: 2 1 200px;">
+            <label class="form-label">Title</label>
+            <input type="text" id="patch-title-input" placeholder="e.g. Added holiday tracking" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">Details</label>
+            <textarea id="patch-details-input" rows="3" placeholder="What changed, one line per item is fine" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+          </div>
+        </div>
+        <button class="add-btn" id="add-patch-btn">Add patch note</button>
+        <div id="patch-notes-list" style="margin-top:16px;"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-label">🎫 TICKET LOG</div>
+        <div class="panel-sub">Hit a problem and figured it out? Log it here — question stays visible, tap it to reveal how it got solved.</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Who</label>
+            <select id="ticket-person-input">
+              <option value="Luigi">Luigi</option>
+              <option value="Juan">Juan</option>
+              <option value="Sergio">Sergio</option>
+            </select>
+          </div>
+          <div class="form-field" style="flex: 2 1 200px;">
+            <label class="form-label">The issue</label>
+            <input type="text" id="ticket-issue-input" placeholder="e.g. Clock-in button froze on Sergio's phone" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">How it was solved</label>
+            <textarea id="ticket-resolution-input" rows="3" placeholder="What fixed it" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+          </div>
+        </div>
+        <button class="add-btn" id="add-ticket-btn">Log ticket</button>
+        <div id="ticket-list" style="margin-top:16px;"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-label">🚧 COMING SOON</div>
+        <div class="empty-state">• <b>Link shortcuts</b> — quick jumps to shared docs, tools, whatever the crew reaches for often.</div>
+      </section>
+
+    </div>
 
   </div>
 
@@ -934,6 +1024,10 @@ function formatDuration(hoursDecimal) {
   const h = Math.floor(totalMinutes / 60);
   const m = totalMinutes % 60;
   return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+function formatSignedDuration(hoursDecimal) {
+  const sign = hoursDecimal < 0 ? '−' : '+';
+  return `${sign}${formatDuration(Math.abs(hoursDecimal))}`;
 }
 function formatClock(date) { return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 function formatDate(date) { return date.toLocaleDateString([], { day: '2-digit', month: 'short' }); }
@@ -1017,9 +1111,11 @@ function applyIdentityDefaults() {
     const mp = document.getElementById('manual-person');
     const bp = document.getElementById('backfill-person');
     const hp = document.getElementById('holiday-person-input');
+    const tp = document.getElementById('ticket-person-input');
     if (mp) mp.value = whoAmI;
     if (bp) bp.value = whoAmI;
     if (hp) hp.value = whoAmI;
+    if (tp) tp.value = whoAmI;
   } else {
     indicator.textContent = "Who's this?";
   }
@@ -1042,7 +1138,8 @@ document.getElementById('whoami-switch-btn').onclick = showIdentityModal;
    2. Classic Konami code on a keyboard: ↑ ↑ ↓ ↓ ← → ← → B A
    3. Type the word "grind" anywhere on the page (not while typing in a
       form field).
-   4. Press and hold the footer text for 3 seconds.
+   4. Tap the crew color dots on Time Clock in the order:
+      Sergio → Luigi → Juan.
    ========================================================================= */
 function spawnConfetti() {
   const colors = [COLORS.Luigi, COLORS.Juan, COLORS.Sergio, '#F2A03D', '#2E9B5C'];
@@ -1139,26 +1236,25 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-/* --- Secret 4: press and hold the footer for 3 seconds --- */
-const FOOTER_MESSAGES = [
-  "Built late at night, fueled by beer bets and mild sibling rivalry. Thanks for using it.",
-  "If you're reading this, the app worked. That was never guaranteed.",
-  "This message was hidden here on purpose, for exactly one person to find eventually. Hi.",
+/* --- Secret 4: tap the crew color dots on Time Clock in the right order --- */
+const DOT_MESSAGES = [
+  "Order acknowledged. Someone's been paying attention to the little details.",
+  "You found the roll call. Nobody else will ever know what order it is.",
+  "Correct sequence. This message self-destructs in... nothing, actually, it just closes when you tap Close.",
 ];
-let footerHoldTimer = null;
-function startFooterHold() {
-  footerHoldTimer = setTimeout(() => {
-    showEgg({ eyebrow: '📝 BEHIND THE SCENES', title: 'You held on.', messages: FOOTER_MESSAGES, shower: 'none' });
-  }, 3000);
+const SECRET_DOT_ORDER = ['Sergio', 'Luigi', 'Juan'];
+let dotTapSequence = [];
+let dotTapResetTimer = null;
+function handleDotTap(person) {
+  dotTapSequence.push(person);
+  clearTimeout(dotTapResetTimer);
+  dotTapResetTimer = setTimeout(() => { dotTapSequence = []; }, 2000);
+  dotTapSequence = dotTapSequence.slice(-SECRET_DOT_ORDER.length);
+  if (dotTapSequence.join(',') === SECRET_DOT_ORDER.join(',')) {
+    dotTapSequence = [];
+    showEgg({ eyebrow: '🎯 CREW ROLL CALL', title: 'Order acknowledged.', messages: DOT_MESSAGES, shower: 'confetti' });
+  }
 }
-function cancelFooterHold() { clearTimeout(footerHoldTimer); }
-const appFooterEl = document.getElementById('app-footer');
-appFooterEl.addEventListener('mousedown', startFooterHold);
-appFooterEl.addEventListener('touchstart', startFooterHold, { passive: true });
-appFooterEl.addEventListener('mouseup', cancelFooterHold);
-appFooterEl.addEventListener('mouseleave', cancelFooterHold);
-appFooterEl.addEventListener('touchend', cancelFooterHold);
-appFooterEl.addEventListener('touchcancel', cancelFooterHold);
 
 /* ---------------------------------------------------------------------
    Archived wagers — persisted via the existing 'setSetting' action
@@ -1275,6 +1371,8 @@ function renderPersonRow() {
     const dot = document.createElement('span');
     dot.className = 'dot' + (isActive ? ' pulsing' : '');
     dot.style.background = COLORS[person];
+    dot.style.cursor = 'pointer';
+    dot.addEventListener('click', (ev) => { ev.stopPropagation(); handleDotTap(person); });
     nameDiv.appendChild(dot);
     nameDiv.appendChild(document.createTextNode(person));
     if (person === whoAmI) {
@@ -1468,7 +1566,83 @@ function renderTimeTab() {
   renderRecentLog();
   renderHoursSummary();
   renderHolidays();
+  renderOvertimePanel();
 }
+
+/* ---------------------------------------------------------------------
+   Extra Hours — assumes an 8h/day expectation, Mon–Fri only, for the
+   current month so far. Weekends never count against anyone; a date
+   in a person's holidays (or an "Everyone" holiday) doesn't either.
+   Panel is hidden by default and toggled per device via localStorage.
+   --------------------------------------------------------------------- */
+const OVERTIME_VISIBLE_KEY = 'punchboard-overtime-visible';
+function isOvertimeVisible() { return localStorage.getItem(OVERTIME_VISIBLE_KEY) === 'true'; }
+function setOvertimeVisible(v) { localStorage.setItem(OVERTIME_VISIBLE_KEY, v ? 'true' : 'false'); }
+
+function countExpectedWorkdays(startStr, endStr, person) {
+  const holidaySet = new Set(
+    getHolidays().filter(h => h.person === 'All' || h.person === person).map(h => h.date)
+  );
+  let count = 0;
+  let d = new Date(startStr + 'T00:00:00');
+  const end = new Date(endStr + 'T00:00:00');
+  while (d <= end) {
+    const dow = d.getDay(); // 0 = Sunday, 6 = Saturday
+    const dateStr = d.toISOString().slice(0, 10);
+    if (dow !== 0 && dow !== 6 && !holidaySet.has(dateStr)) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
+function renderOvertimePanel() {
+  const content = document.getElementById('overtime-content');
+  const btn = document.getElementById('overtime-toggle-btn');
+  if (!content || !btn) return;
+  const visible = isOvertimeVisible();
+  content.style.display = visible ? 'block' : 'none';
+  btn.textContent = visible ? 'Hide' : 'Show';
+  if (!visible) return;
+
+  content.innerHTML = '';
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const monthPrefix = monthStart.slice(0, 7);
+  const todayStr = todayISO();
+
+  PEOPLE.forEach(p => {
+    const expectedDays = countExpectedWorkdays(monthStart, todayStr, p);
+    const expectedHours = expectedDays * 8;
+    const actualHours = entries
+      .filter(e => e.person === p && e.start.slice(0, 7) === monthPrefix)
+      .reduce((sum, e) => sum + e.hours, 0);
+    const extra = actualHours - expectedHours;
+
+    const row = document.createElement('div');
+    row.className = 'hours-row';
+    const top = document.createElement('div');
+    top.className = 'hours-top-line';
+    const name = document.createElement('span');
+    name.className = 'hours-name';
+    name.textContent = p;
+    const val = document.createElement('span');
+    val.className = 'hours-value';
+    val.style.color = extra >= 0 ? '#2E9B5C' : '#E0503C';
+    val.textContent = formatSignedDuration(extra);
+    top.appendChild(name);
+    top.appendChild(val);
+    row.appendChild(top);
+    const sub = document.createElement('div');
+    sub.className = 'leader-meta';
+    sub.textContent = `${actualHours.toFixed(1)}h logged vs ${expectedHours}h expected (${expectedDays} weekdays so far)`;
+    row.appendChild(sub);
+    content.appendChild(row);
+  });
+}
+document.getElementById('overtime-toggle-btn').onclick = () => {
+  setOvertimeVisible(!isOvertimeVisible());
+  renderOvertimePanel();
+};
 
 /* ---------------------------------------------------------------------
    Holidays — persisted via the same settings-based approach as the
@@ -2531,6 +2705,10 @@ function renderVaultTab() {
   const unlocked = localStorage.getItem(VAULT_UNLOCK_KEY) === 'true';
   document.getElementById('vault-locked').style.display = unlocked ? 'none' : 'block';
   document.getElementById('vault-unlocked').style.display = unlocked ? 'block' : 'none';
+  if (unlocked) {
+    renderPatchNotes();
+    renderTickets();
+  }
 }
 function attemptVaultUnlock() {
   const input = document.getElementById('vault-password-input');
@@ -2549,9 +2727,170 @@ document.getElementById('vault-password-input').addEventListener('keydown', (e) 
 });
 
 /* ---------------------------------------------------------------------
+   Patch Notes — same settings-based storage trick as holidays and
+   archived matches, so it works immediately with no backend changes.
+   --------------------------------------------------------------------- */
+function getPatchNotes() {
+  try { return JSON.parse(settings.patchNotes || '[]'); } catch (e) { return []; }
+}
+async function savePatchNotes(list) {
+  settings.patchNotes = JSON.stringify(list);
+  try { await apiSetSetting('patchNotes', settings.patchNotes); } catch (e) { console.error('Failed to save patch notes', e); }
+}
+function renderPatchNotes() {
+  const wrap = document.getElementById('patch-notes-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const notes = getPatchNotes().slice().sort((a, b) => b.date.localeCompare(a.date));
+  if (notes.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No patch notes yet — add the first one above.</div>';
+    return;
+  }
+  notes.forEach(n => {
+    const entry = document.createElement('div');
+    entry.className = 'patch-entry';
+    const top = document.createElement('div');
+    top.className = 'patch-top-line';
+    const left = document.createElement('div');
+    const date = document.createElement('div');
+    date.className = 'patch-date';
+    date.textContent = new Date(n.date + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+    left.appendChild(date);
+    const title = document.createElement('div');
+    title.className = 'patch-title';
+    title.textContent = n.title;
+    left.appendChild(title);
+    top.appendChild(left);
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.textContent = '✕';
+    del.title = 'Remove this patch note';
+    del.onclick = async () => {
+      const updated = getPatchNotes().filter(x => x.id !== n.id);
+      await savePatchNotes(updated);
+      renderPatchNotes();
+    };
+    top.appendChild(del);
+    entry.appendChild(top);
+    if (n.details) {
+      const details = document.createElement('div');
+      details.className = 'patch-details';
+      details.textContent = n.details;
+      entry.appendChild(details);
+    }
+    wrap.appendChild(entry);
+  });
+}
+document.getElementById('add-patch-btn').onclick = async () => {
+  const dateInput = document.getElementById('patch-date-input');
+  const titleInput = document.getElementById('patch-title-input');
+  const detailsInput = document.getElementById('patch-details-input');
+  const date = dateInput.value || todayISO();
+  const title = titleInput.value.trim();
+  const details = detailsInput.value.trim();
+  if (!title) { alert('Give it a title at least.'); return; }
+  const note = { id: `p-${Date.now()}`, date, title, details };
+  const updated = [...getPatchNotes(), note];
+  await savePatchNotes(updated);
+  dateInput.value = '';
+  titleInput.value = '';
+  detailsInput.value = '';
+  renderPatchNotes();
+};
+
+/* ---------------------------------------------------------------------
+   Ticket Log — FAQ-style. Question always visible; tap to reveal the
+   resolution. Open/closed state is local to the session (not saved).
+   --------------------------------------------------------------------- */
+function getTickets() {
+  try { return JSON.parse(settings.tickets || '[]'); } catch (e) { return []; }
+}
+async function saveTickets(list) {
+  settings.tickets = JSON.stringify(list);
+  try { await apiSetSetting('tickets', settings.tickets); } catch (e) { console.error('Failed to save tickets', e); }
+}
+let openTicketIds = new Set();
+function renderTickets() {
+  const wrap = document.getElementById('ticket-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const tickets = getTickets().slice().sort((a, b) => b.date.localeCompare(a.date));
+  if (tickets.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No tickets logged yet — the first one you add builds the FAQ.</div>';
+    return;
+  }
+  tickets.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'ticket-item' + (openTicketIds.has(t.id) ? ' open' : '');
+
+    const question = document.createElement('div');
+    question.className = 'ticket-question';
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = COLORS[t.person] || 'var(--faint)';
+    question.appendChild(dot);
+    const qText = document.createElement('span');
+    qText.className = 'ticket-question-text';
+    qText.textContent = t.issue;
+    question.appendChild(qText);
+    const chevron = document.createElement('span');
+    chevron.className = 'ticket-chevron';
+    chevron.textContent = '▸';
+    question.appendChild(chevron);
+    question.onclick = () => {
+      if (openTicketIds.has(t.id)) openTicketIds.delete(t.id);
+      else openTicketIds.add(t.id);
+      renderTickets();
+    };
+    item.appendChild(question);
+
+    const answer = document.createElement('div');
+    answer.className = 'ticket-answer';
+    answer.textContent = t.resolution;
+    const meta = document.createElement('div');
+    meta.className = 'ticket-meta';
+    meta.textContent = `Logged by ${t.person} · ${new Date(t.date + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    answer.appendChild(meta);
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.textContent = '✕ remove';
+    del.style.marginTop = '8px';
+    del.style.fontSize = '11px';
+    del.style.fontFamily = "'IBM Plex Mono', monospace";
+    del.onclick = async (ev) => {
+      ev.stopPropagation();
+      const updated = getTickets().filter(x => x.id !== t.id);
+      await saveTickets(updated);
+      openTicketIds.delete(t.id);
+      renderTickets();
+    };
+    answer.appendChild(del);
+    item.appendChild(answer);
+
+    wrap.appendChild(item);
+  });
+}
+document.getElementById('add-ticket-btn').onclick = async () => {
+  const personInput = document.getElementById('ticket-person-input');
+  const issueInput = document.getElementById('ticket-issue-input');
+  const resolutionInput = document.getElementById('ticket-resolution-input');
+  const person = personInput.value;
+  const issue = issueInput.value.trim();
+  const resolution = resolutionInput.value.trim();
+  if (!issue || !resolution) { alert('Fill in both the issue and how it was solved.'); return; }
+  const ticket = { id: `t-${Date.now()}`, date: todayISO(), person, issue, resolution };
+  const updated = [...getTickets(), ticket];
+  await saveTickets(updated);
+  issueInput.value = '';
+  resolutionInput.value = '';
+  renderTickets();
+};
+
+/* ---------------------------------------------------------------------
    Init
    --------------------------------------------------------------------- */
 document.getElementById('backfill-date').value = todayISO();
+document.getElementById('patch-date-input').value = todayISO();
 renderMini('energy', 'mini-energy');
 renderMini('stress', 'mini-stress');
 renderMini('happiness', 'mini-happiness');

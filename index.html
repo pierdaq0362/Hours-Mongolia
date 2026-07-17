@@ -638,11 +638,18 @@
 
     <section class="panel">
       <div class="leader-header-row">
-        <div class="panel-label">EXTRA HOURS THIS MONTH</div>
+        <div class="panel-label">EXTRA HOURS</div>
         <button class="archive-btn" id="overtime-toggle-btn">Show</button>
       </div>
       <div class="panel-sub">Assumes an 8h/day expectation, Mon–Fri only — weekends and holidays don't count against anyone.</div>
-      <div id="overtime-content" style="display:none;"></div>
+      <div id="overtime-content" style="display:none;">
+        <div class="toggle-group" id="overtime-period-toggle" style="margin-bottom:14px;">
+          <button class="toggle-btn active" data-period="thisMonth">This month</button>
+          <button class="toggle-btn" data-period="lastMonth">Last month</button>
+          <button class="toggle-btn" data-period="ytd">Year to date</button>
+        </div>
+        <div id="overtime-rows"></div>
+      </div>
     </section>
 
     <section class="panel">
@@ -1570,14 +1577,18 @@ function renderTimeTab() {
 }
 
 /* ---------------------------------------------------------------------
-   Extra Hours — assumes an 8h/day expectation, Mon–Fri only, for the
-   current month so far. Weekends never count against anyone; a date
-   in a person's holidays (or an "Everyone" holiday) doesn't either.
-   Panel is hidden by default and toggled per device via localStorage.
+   Extra Hours — assumes an 8h/day expectation, Mon–Fri only. Weekends
+   never count against anyone; a date in a person's holidays (or an
+   "Everyone" holiday) doesn't either. Panel is hidden by default and
+   toggled per device via localStorage. Period is switchable between
+   this month (elapsed so far), last month (full), and year to date.
    --------------------------------------------------------------------- */
 const OVERTIME_VISIBLE_KEY = 'punchboard-overtime-visible';
+const OVERTIME_PERIOD_KEY = 'punchboard-overtime-period';
 function isOvertimeVisible() { return localStorage.getItem(OVERTIME_VISIBLE_KEY) === 'true'; }
 function setOvertimeVisible(v) { localStorage.setItem(OVERTIME_VISIBLE_KEY, v ? 'true' : 'false'); }
+function getOvertimePeriod() { return localStorage.getItem(OVERTIME_PERIOD_KEY) || 'thisMonth'; }
+function setOvertimePeriod(p) { localStorage.setItem(OVERTIME_PERIOD_KEY, p); }
 
 function countExpectedWorkdays(startStr, endStr, person) {
   const holidaySet = new Set(
@@ -1594,6 +1605,28 @@ function countExpectedWorkdays(startStr, endStr, person) {
   }
   return count;
 }
+function sumHoursInRange(person, startStr, endStr) {
+  return entries
+    .filter(e => e.person === person && e.start.slice(0, 10) >= startStr && e.start.slice(0, 10) <= endStr)
+    .reduce((sum, e) => sum + e.hours, 0);
+}
+function getOvertimeRange(period) {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (period === 'lastMonth') {
+    const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthEnd = new Date(firstOfThisMonth.getTime() - 86400000);
+    const lastMonthStart = new Date(lastMonthEnd.getFullYear(), lastMonthEnd.getMonth(), 1);
+    return { start: iso(lastMonthStart), end: iso(lastMonthEnd), label: 'last month' };
+  }
+  if (period === 'ytd') {
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    return { start: iso(yearStart), end: todayISO(), label: 'year to date' };
+  }
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  return { start: iso(monthStart), end: todayISO(), label: 'this month so far' };
+}
 
 function renderOvertimePanel() {
   const content = document.getElementById('overtime-content');
@@ -1604,18 +1637,19 @@ function renderOvertimePanel() {
   btn.textContent = visible ? 'Hide' : 'Show';
   if (!visible) return;
 
-  content.innerHTML = '';
-  const now = new Date();
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  const monthPrefix = monthStart.slice(0, 7);
-  const todayStr = todayISO();
+  const period = getOvertimePeriod();
+  document.querySelectorAll('#overtime-period-toggle .toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.period === period);
+  });
+
+  const rows = document.getElementById('overtime-rows');
+  rows.innerHTML = '';
+  const range = getOvertimeRange(period);
 
   PEOPLE.forEach(p => {
-    const expectedDays = countExpectedWorkdays(monthStart, todayStr, p);
+    const expectedDays = countExpectedWorkdays(range.start, range.end, p);
     const expectedHours = expectedDays * 8;
-    const actualHours = entries
-      .filter(e => e.person === p && e.start.slice(0, 7) === monthPrefix)
-      .reduce((sum, e) => sum + e.hours, 0);
+    const actualHours = sumHoursInRange(p, range.start, range.end);
     const extra = actualHours - expectedHours;
 
     const row = document.createElement('div');
@@ -1634,15 +1668,21 @@ function renderOvertimePanel() {
     row.appendChild(top);
     const sub = document.createElement('div');
     sub.className = 'leader-meta';
-    sub.textContent = `${actualHours.toFixed(1)}h logged vs ${expectedHours}h expected (${expectedDays} weekdays so far)`;
+    sub.textContent = `${actualHours.toFixed(1)}h logged vs ${expectedHours}h expected (${expectedDays} weekdays, ${range.label})`;
     row.appendChild(sub);
-    content.appendChild(row);
+    rows.appendChild(row);
   });
 }
 document.getElementById('overtime-toggle-btn').onclick = () => {
   setOvertimeVisible(!isOvertimeVisible());
   renderOvertimePanel();
 };
+document.querySelectorAll('#overtime-period-toggle .toggle-btn').forEach(b => {
+  b.onclick = () => {
+    setOvertimePeriod(b.dataset.period);
+    renderOvertimePanel();
+  };
+});
 
 /* ---------------------------------------------------------------------
    Holidays — persisted via the same settings-based approach as the
@@ -2702,7 +2742,7 @@ function switchMainTab(which) {
 const VAULT_PASSWORD = '16112000';
 const VAULT_UNLOCK_KEY = 'punchboard-vault-unlocked';
 function renderVaultTab() {
-  const unlocked = localStorage.getItem(VAULT_UNLOCK_KEY) === 'true';
+  const unlocked = sessionStorage.getItem(VAULT_UNLOCK_KEY) === 'true';
   document.getElementById('vault-locked').style.display = unlocked ? 'none' : 'block';
   document.getElementById('vault-unlocked').style.display = unlocked ? 'block' : 'none';
   if (unlocked) {
@@ -2713,7 +2753,7 @@ function renderVaultTab() {
 function attemptVaultUnlock() {
   const input = document.getElementById('vault-password-input');
   if (input.value === VAULT_PASSWORD) {
-    localStorage.setItem(VAULT_UNLOCK_KEY, 'true');
+    sessionStorage.setItem(VAULT_UNLOCK_KEY, 'true');
     document.getElementById('vault-error').style.display = 'none';
     input.value = '';
     renderVaultTab();

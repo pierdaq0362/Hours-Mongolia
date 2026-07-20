@@ -991,11 +991,14 @@
       <button class="add-btn" id="add-match-btn">Add match</button>
     </section>
 
-    <section class="panel">
-      <div class="panel-label">GUESS THE WORLD CUP WINNER</div>
-      <div class="panel-sub">Worth a full day of free beers. Enter the real winner once the final's done.</div>
+    <div id="wc-winner-toggle-row" style="margin-bottom:16px;">
+      <button class="archive-btn" id="wc-winner-toggle-btn">Show World Cup winner guess</button>
+    </div>
 
-      <div id="winner-guess-active">
+    <div id="wc-winner-wrap">
+      <section class="panel">
+        <div class="panel-label">GUESS THE WORLD CUP WINNER</div>
+        <div class="panel-sub">Worth a full day of free beers. Enter the real winner once the final's done.</div>
         <div id="winner-predict"></div>
         <div class="form-row" style="margin-top:6px;">
           <div class="form-field">
@@ -1005,18 +1008,12 @@
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
           <button class="add-btn" id="save-winner-btn">Save winner</button>
-          <button class="archive-btn" id="archive-winner-btn">Archive</button>
+          <button class="archive-btn" id="archive-winner-btn">Archive &amp; hide</button>
         </div>
         <div id="winner-result" style="margin-top:10px; font-size:13px; color: var(--muted);"></div>
-      </div>
-
-      <div id="winner-guess-hidden-notice" style="display:none;">
-        <div class="empty-state">Archived — the win is recorded on the Beer Scoreboard and in the history below.</div>
-        <button class="archive-btn" id="unhide-winner-btn" style="margin-top:8px;">Start guesses for next tournament</button>
-      </div>
-
-      <div id="world-cup-history" style="margin-top:14px;"></div>
-    </section>
+        <div id="world-cup-history" style="margin-top:14px;"></div>
+      </section>
+    </div>
 
     <section class="panel">
       <div class="panel-label">🎯 GOAL TRACKER</div>
@@ -3069,16 +3066,22 @@ document.getElementById('add-match-btn').onclick = async () => {
   renderMatchList();
   try { await apiAddMatch(match); } catch (e) { console.error(e); }
 };
-function renderWinnerPredict() {
+function renderWcWinnerVisibility() {
   const isHidden = settings.worldCupHidden === 'true';
-  const activeEl = document.getElementById('winner-guess-active');
-  const hiddenEl = document.getElementById('winner-guess-hidden-notice');
-  if (activeEl && hiddenEl) {
-    activeEl.style.display = isHidden ? 'none' : 'block';
-    hiddenEl.style.display = isHidden ? 'block' : 'none';
-  }
-  if (isHidden) return;
+  const wrap = document.getElementById('wc-winner-wrap');
+  const toggleBtn = document.getElementById('wc-winner-toggle-btn');
+  if (wrap) wrap.style.display = isHidden ? 'none' : 'block';
+  if (toggleBtn) toggleBtn.textContent = isHidden ? 'Show World Cup winner guess' : 'Hide World Cup winner guess';
+}
+document.getElementById('wc-winner-toggle-btn').onclick = async () => {
+  const nowHidden = settings.worldCupHidden !== 'true';
+  settings.worldCupHidden = nowHidden ? 'true' : 'false';
+  try { await apiSetSetting('worldCupHidden', settings.worldCupHidden); } catch (e) { console.error(e); }
+  renderWcWinnerVisibility();
+};
 
+function renderWinnerPredict() {
+  renderWcWinnerVisibility();
   const wrap = document.getElementById('winner-predict');
   wrap.innerHTML = '';
   PEOPLE.forEach(p => {
@@ -3200,11 +3203,6 @@ document.getElementById('archive-winner-btn').onclick = async () => {
   renderWinnerPredict();
   renderBetsScoreboard();
   renderWorldCupHistory();
-};
-document.getElementById('unhide-winner-btn').onclick = async () => {
-  settings.worldCupHidden = 'false';
-  try { await apiSetSetting('worldCupHidden', 'false'); } catch (e) { console.error(e); }
-  renderWinnerPredict();
 };
 function renderBetsTab() { renderBetsScoreboard(); renderMatchList(); renderWinnerPredict(); renderWorldCupHistory(); renderGoalTracker(); }
 

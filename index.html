@@ -440,6 +440,24 @@
   }
 
   /* crew pulse banner */
+  /* commemorative: Spain 2026 World Cup champions */
+  .champion-banner {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: linear-gradient(90deg, #AA151B, #F1BF00 50%, #AA151B);
+    background-size: 200% 100%;
+    animation: champion-shimmer 6s ease-in-out infinite;
+    color: #fff; border-radius: 9px; padding: 11px 14px; margin-bottom: 16px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.05em; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  }
+  @keyframes champion-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .champion-banner { animation: none; }
+  }
+
   .pulse-banner {
     display: flex;
     align-items: center;
@@ -631,6 +649,49 @@
     border-top: 1px dashed var(--line); line-height: 1.5; display: none;
   }
   .egg-hint-text.open { display: block; }
+
+  /* vault: category accordion groups (patch notes + tickets) */
+  .category-group { margin-bottom: 12px; }
+  .category-header {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    background: var(--track); border-radius: 8px; cursor: pointer;
+  }
+  .category-header .chevron {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint);
+    transition: transform 0.15s ease; flex-shrink: 0;
+  }
+  .category-header.open .chevron { transform: rotate(90deg); }
+  .category-name { font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 14px; flex: 1; }
+  .category-count {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint); flex-shrink: 0;
+  }
+  .category-body { display: none; padding: 10px 2px 0; }
+  .category-body.open { display: block; }
+  .entry-edit-btn {
+    background: none; border: 1px solid var(--line); border-radius: 6px; color: var(--muted);
+    font-size: 11px; font-family: 'IBM Plex Mono', monospace; padding: 3px 9px; cursor: pointer; flex-shrink: 0;
+  }
+  .entry-edit-btn:hover { border-color: var(--faint); color: var(--ink); }
+  .entry-category-select {
+    border: 1px solid var(--line); border-radius: 6px; color: var(--muted);
+    font-size: 11px; font-family: 'IBM Plex Mono', monospace; padding: 3px 4px;
+    background: #fff; cursor: pointer; max-width: 110px; flex-shrink: 0;
+  }
+
+  /* goal tracker */
+  .goal-card { border: 1.5px solid var(--line); border-radius: 9px; padding: 14px; margin-bottom: 12px; }
+  .goal-card.archived { background: var(--track); border-color: var(--track); }
+  .goal-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .goal-name { font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 16px; }
+  .goal-btn-row { display: flex; gap: 6px; flex-shrink: 0; }
+  .goal-progress-row { margin-bottom: 12px; }
+  .goal-progress-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .goal-progress-name { width: 56px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .goal-progress-inputs { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .goal-progress-pct {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+    margin-left: auto; flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
@@ -648,6 +709,8 @@
     </div>
   </header>
 
+  <div class="champion-banner">🇪🇸 🏆 SPAIN — 2026 WORLD CUP CHAMPIONS 🏆 🇪🇸</div>
+
   <div class="pulse-banner">
     <span class="pulse-dot"></span>
     <span class="pulse-text" id="pulse-text">Loading crew pulse…</span>
@@ -657,7 +720,8 @@
     <div class="main-tab active" id="tab-time">Time Clock</div>
     <div class="main-tab" id="tab-mood">Mood Tracker<span class="tab-dot" id="mood-tab-dot"></span></div>
     <div class="main-tab" id="tab-awards">Crew Awards</div>
-    <div class="main-tab" id="tab-bets">Football Bets</div>
+    <div class="main-tab" id="tab-bets">🎯 Wager Board</div>
+    <div class="main-tab" id="tab-patchnotes">📋 Patch Notes</div>
     <div class="main-tab" id="tab-vault">🔒 Vault</div>
   </div>
 
@@ -889,7 +953,7 @@
     </section>
   </div>
 
-  <!-- ===================== FOOTBALL BETS ===================== -->
+  <!-- ===================== WAGER BOARD (football bets + goals) ===================== -->
   <div class="view" id="view-bets">
 
     <section class="panel">
@@ -936,10 +1000,65 @@
           <input type="text" id="actual-winner-input" placeholder="Enter once the final is played" />
         </div>
       </div>
-      <button class="add-btn" id="save-winner-btn">Save winner</button>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="add-btn" id="save-winner-btn">Save winner</button>
+        <button class="archive-btn" id="archive-winner-btn">Archive</button>
+      </div>
       <div id="winner-result" style="margin-top:10px; font-size:13px; color: var(--muted);"></div>
+      <div id="world-cup-history" style="margin-top:14px;"></div>
     </section>
 
+    <section class="panel">
+      <div class="panel-label">🎯 GOAL TRACKER</div>
+      <div class="panel-sub">Shared goals like "Audit 2026" — everyone logs their own progress, percentages update automatically.</div>
+      <div class="form-row">
+        <div class="form-field" style="flex: 1 1 100%;">
+          <label class="form-label">New goal name</label>
+          <input type="text" id="goal-name-input" placeholder="e.g. Audit 2026" />
+        </div>
+      </div>
+      <button class="add-btn" id="add-goal-btn">Add goal</button>
+      <div id="goal-list" style="margin-top:16px;"></div>
+      <button class="archive-btn" id="toggle-archived-goals-btn" style="margin-top:10px;">Show archived goals</button>
+      <div id="archived-goal-list" style="margin-top:12px; display:none;"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== PATCH NOTES ===================== -->
+  <div class="view" id="view-patchnotes">
+    <section class="panel">
+      <div class="panel-label">📋 PATCH NOTES</div>
+      <div class="panel-sub">A running log of what's changed in The Punch Board, so nobody has to wonder "wait, when did that show up?"</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Category</label>
+          <input type="text" id="patch-category-input" list="patch-category-datalist" placeholder="e.g. Features" />
+          <datalist id="patch-category-datalist"></datalist>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Date</label>
+          <input type="date" id="patch-date-input" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="flex: 1 1 100%;">
+          <label class="form-label">Title</label>
+          <input type="text" id="patch-title-input" placeholder="e.g. Added holiday tracking" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="flex: 1 1 100%;">
+          <label class="form-label">Details</label>
+          <textarea id="patch-details-input" rows="3" placeholder="What changed, one line per item is fine" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="add-btn" id="add-patch-btn">Add patch note</button>
+        <button class="archive-btn" id="cancel-patch-edit-btn" style="display:none;">Cancel edit</button>
+      </div>
+      <div id="patch-notes-list" style="margin-top:16px;"></div>
+    </section>
   </div>
 
   <!-- ===================== VAULT (password-gated, WIP) ===================== -->
@@ -962,57 +1081,44 @@
 
       <section class="panel">
         <div class="leader-header-row">
-          <div class="panel-label">📋 PATCH NOTES</div>
-          <button class="archive-btn" id="patch-notes-toggle-btn">Show</button>
+          <div class="panel-label">🎫 TICKET LOG</div>
+          <button class="archive-btn" id="ticket-log-toggle-btn">Show</button>
         </div>
-        <div class="panel-sub">A running log of what's changed in The Punch Board, so nobody has to wonder "wait, when did that show up?"</div>
-        <div id="patch-notes-content" style="display:none;">
+        <div class="panel-sub">Hit a problem and figured it out? Log it here — question stays visible, tap it to reveal how it got solved.</div>
+        <div id="ticket-log-content" style="display:none;">
           <div class="form-row">
             <div class="form-field">
-              <label class="form-label">Date</label>
-              <input type="date" id="patch-date-input" />
+              <label class="form-label">Category</label>
+              <input type="text" id="ticket-category-input" list="ticket-category-datalist" placeholder="e.g. Login issues" />
+              <datalist id="ticket-category-datalist"></datalist>
             </div>
-            <div class="form-field" style="flex: 2 1 200px;">
-              <label class="form-label">Title</label>
-              <input type="text" id="patch-title-input" placeholder="e.g. Added holiday tracking" />
+            <div class="form-field">
+              <label class="form-label">Who</label>
+              <select id="ticket-person-input">
+                <option value="Luigi">Luigi</option>
+                <option value="Juan">Juan</option>
+                <option value="Sergio">Sergio</option>
+              </select>
             </div>
           </div>
           <div class="form-row">
             <div class="form-field" style="flex: 1 1 100%;">
-              <label class="form-label">Details</label>
-              <textarea id="patch-details-input" rows="3" placeholder="What changed, one line per item is fine" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+              <label class="form-label">The issue</label>
+              <input type="text" id="ticket-issue-input" placeholder="e.g. Clock-in button froze on Sergio's phone" />
             </div>
           </div>
-          <button class="add-btn" id="add-patch-btn">Add patch note</button>
-          <div id="patch-notes-list" style="margin-top:16px;"></div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-label">🎫 TICKET LOG</div>
-        <div class="panel-sub">Hit a problem and figured it out? Log it here — question stays visible, tap it to reveal how it got solved.</div>
-        <div class="form-row">
-          <div class="form-field">
-            <label class="form-label">Who</label>
-            <select id="ticket-person-input">
-              <option value="Luigi">Luigi</option>
-              <option value="Juan">Juan</option>
-              <option value="Sergio">Sergio</option>
-            </select>
+          <div class="form-row">
+            <div class="form-field" style="flex: 1 1 100%;">
+              <label class="form-label">How it was solved</label>
+              <textarea id="ticket-resolution-input" rows="3" placeholder="What fixed it" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+            </div>
           </div>
-          <div class="form-field" style="flex: 2 1 200px;">
-            <label class="form-label">The issue</label>
-            <input type="text" id="ticket-issue-input" placeholder="e.g. Clock-in button froze on Sergio's phone" />
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="add-btn" id="add-ticket-btn">Log ticket</button>
+            <button class="archive-btn" id="cancel-ticket-edit-btn" style="display:none;">Cancel edit</button>
           </div>
+          <div id="ticket-list" style="margin-top:16px;"></div>
         </div>
-        <div class="form-row">
-          <div class="form-field" style="flex: 1 1 100%;">
-            <label class="form-label">How it was solved</label>
-            <textarea id="ticket-resolution-input" rows="3" placeholder="What fixed it" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
-          </div>
-        </div>
-        <button class="add-btn" id="add-ticket-btn">Log ticket</button>
-        <div id="ticket-list" style="margin-top:16px;"></div>
       </section>
 
     </div>
@@ -1503,6 +1609,7 @@ async function loadData() {
   // Awards and Bets render on tab activation (cheap enough to always keep fresh too)
   renderAwardsTab();
   renderBetsTab();
+  renderPatchNotes();
   renderCrewPulse();
   renderEggDrawer();
 }
@@ -2613,7 +2720,7 @@ function renderAwardsTab() {
 }
 
 /* =========================================================================
-   FOOTBALL BETS
+   WAGER BOARD (football bets + goal tracker)
    ========================================================================= */
 function findPrediction(matchId, person) {
   return predictions.find(pr => pr.matchId === matchId && pr.person === person) || null;
@@ -2924,7 +3031,78 @@ document.getElementById('save-winner-btn').onclick = async () => {
   renderBetsScoreboard();
   try { await apiSetSetting('actualWinner', val); } catch (e) { console.error(e); }
 };
-function renderBetsTab() { renderBetsScoreboard(); renderMatchList(); renderWinnerPredict(); }
+
+/* ---------------------------------------------------------------------
+   World Cup winner archive — same idea as archiving a wager: the
+   result (winner + who called it) gets permanently recorded in
+   history BEFORE the pick/winner fields are cleared, so nothing's
+   lost when the board gets reset for the next tournament.
+   --------------------------------------------------------------------- */
+function getWorldCupHistory() {
+  try { return JSON.parse(settings.worldCupHistory || '[]'); } catch (e) { return []; }
+}
+async function saveWorldCupHistory(list) {
+  settings.worldCupHistory = JSON.stringify(list);
+  try { await apiSetSetting('worldCupHistory', settings.worldCupHistory); } catch (e) { console.error('Failed to save World Cup history', e); }
+}
+function renderWorldCupHistory() {
+  const wrap = document.getElementById('world-cup-history');
+  if (!wrap) return;
+  const history = getWorldCupHistory().slice().sort((a, b) => b.date.localeCompare(a.date));
+  wrap.innerHTML = '';
+  if (history.length === 0) return;
+  history.forEach(h => {
+    const row = document.createElement('div');
+    row.className = 'holiday-row';
+    const label = document.createElement('span');
+    label.className = 'holiday-label';
+    label.textContent = h.callers.length
+      ? `🏆 ${h.winner} won — called by ${h.callers.join(' & ')}`
+      : `🏆 ${h.winner} won — nobody called it`;
+    row.appendChild(label);
+    const date = document.createElement('span');
+    date.className = 'holiday-date';
+    date.textContent = new Date(h.date + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+    row.appendChild(date);
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.textContent = '✕';
+    del.title = 'Remove this history entry';
+    del.onclick = async () => {
+      const updated = getWorldCupHistory().filter(x => x.id !== h.id);
+      await saveWorldCupHistory(updated);
+      renderWorldCupHistory();
+    };
+    row.appendChild(del);
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('archive-winner-btn').onclick = async () => {
+  if (!settings.actualWinner) { alert('Enter and save the actual World Cup winner first.'); return; }
+  const winner = settings.actualWinner;
+  const callers = PEOPLE.filter(p => {
+    const pick = winnerPicks.find(w => w.person === p);
+    return pick && pick.prediction && pick.prediction.toLowerCase() === winner.toLowerCase();
+  });
+  if (!confirm(`Archive "${winner}" as champion${callers.length ? ` (called by ${callers.join(' & ')})` : ''}? This clears everyone's picks and the winner field for the next tournament.`)) return;
+
+  const record = { id: `wc-${Date.now()}`, winner, callers, date: todayISO() };
+  await saveWorldCupHistory([...getWorldCupHistory(), record]);
+
+  // Clear picks and the winner field, both locally and on the server
+  for (const p of PEOPLE) {
+    const idx = winnerPicks.findIndex(w => w.person === p);
+    if (idx !== -1) winnerPicks.splice(idx, 1);
+    try { await apiSetWinnerPick(p, ''); } catch (e) { console.error(e); }
+  }
+  settings.actualWinner = '';
+  try { await apiSetSetting('actualWinner', ''); } catch (e) { console.error(e); }
+
+  renderWinnerPredict();
+  renderBetsScoreboard();
+  renderWorldCupHistory();
+};
+function renderBetsTab() { renderBetsScoreboard(); renderMatchList(); renderWinnerPredict(); renderWorldCupHistory(); renderGoalTracker(); }
 
 /* =========================================================================
    TAB SWITCHING
@@ -2933,22 +3111,26 @@ document.getElementById('tab-time').onclick = () => switchMainTab('time');
 document.getElementById('tab-mood').onclick = () => switchMainTab('mood');
 document.getElementById('tab-awards').onclick = () => switchMainTab('awards');
 document.getElementById('tab-bets').onclick = () => switchMainTab('bets');
+document.getElementById('tab-patchnotes').onclick = () => switchMainTab('patchnotes');
 document.getElementById('tab-vault').onclick = () => switchMainTab('vault');
 function switchMainTab(which) {
   document.getElementById('tab-time').classList.toggle('active', which === 'time');
   document.getElementById('tab-mood').classList.toggle('active', which === 'mood');
   document.getElementById('tab-awards').classList.toggle('active', which === 'awards');
   document.getElementById('tab-bets').classList.toggle('active', which === 'bets');
+  document.getElementById('tab-patchnotes').classList.toggle('active', which === 'patchnotes');
   document.getElementById('tab-vault').classList.toggle('active', which === 'vault');
   document.getElementById('view-time').classList.toggle('active', which === 'time');
   document.getElementById('view-mood').classList.toggle('active', which === 'mood');
   document.getElementById('view-awards').classList.toggle('active', which === 'awards');
   document.getElementById('view-bets').classList.toggle('active', which === 'bets');
+  document.getElementById('view-patchnotes').classList.toggle('active', which === 'patchnotes');
   document.getElementById('view-vault').classList.toggle('active', which === 'vault');
   if (which === 'time') renderTimeTab();
   if (which === 'mood') renderMoodTab();
   if (which === 'awards') renderAwardsTab();
   if (which === 'bets') renderBetsTab();
+  if (which === 'patchnotes') renderPatchNotes();
   if (which === 'vault') renderVaultTab();
 }
 
@@ -2963,7 +3145,6 @@ function renderVaultTab() {
   document.getElementById('vault-locked').style.display = unlocked ? 'none' : 'block';
   document.getElementById('vault-unlocked').style.display = unlocked ? 'block' : 'none';
   if (unlocked) {
-    renderPatchNotes();
     renderTickets();
   }
 }
@@ -2987,6 +3168,40 @@ document.getElementById('vault-password-input').addEventListener('keydown', (e) 
    Patch Notes — same settings-based storage trick as holidays and
    archived matches, so it works immediately with no backend changes.
    --------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------
+   Shared: a small inline <select> to reassign an entry's category
+   without opening full Edit mode — used by both Patch Notes and
+   Ticket rows. "+ New category…" prompts for a name.
+   --------------------------------------------------------------------- */
+function buildCategorySelect(categories, currentValue, onChange) {
+  const select = document.createElement('select');
+  select.className = 'entry-category-select';
+  categories.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    if (c === currentValue) opt.selected = true;
+    select.appendChild(opt);
+  });
+  const newOpt = document.createElement('option');
+  newOpt.value = '__new__';
+  newOpt.textContent = '+ New…';
+  select.appendChild(newOpt);
+  select.onchange = () => {
+    if (select.value === '__new__') {
+      const name = prompt('New category name:');
+      if (name && name.trim()) {
+        onChange(name.trim());
+      } else {
+        select.value = currentValue;
+      }
+    } else {
+      onChange(select.value);
+    }
+  };
+  return select;
+}
+
 function getPatchNotes() {
   try { return JSON.parse(settings.patchNotes || '[]'); } catch (e) { return []; }
 }
@@ -2994,78 +3209,157 @@ async function savePatchNotes(list) {
   settings.patchNotes = JSON.stringify(list);
   try { await apiSetSetting('patchNotes', settings.patchNotes); } catch (e) { console.error('Failed to save patch notes', e); }
 }
-const PATCH_NOTES_VISIBLE_KEY = 'punchboard-patchnotes-visible';
-function isPatchNotesVisible() { return localStorage.getItem(PATCH_NOTES_VISIBLE_KEY) === 'true'; }
-function setPatchNotesVisible(v) { localStorage.setItem(PATCH_NOTES_VISIBLE_KEY, v ? 'true' : 'false'); }
+
+let editingPatchId = null;
+let collapsedPatchCategories = new Set();
+
+function renderPatchCategoryDatalist() {
+  const dl = document.getElementById('patch-category-datalist');
+  if (!dl) return;
+  const cats = [...new Set(getPatchNotes().map(n => n.category || 'General'))].sort();
+  dl.innerHTML = cats.map(c => `<option value="${c}"></option>`).join('');
+}
+function getPatchCategoriesList() {
+  const cats = new Set(getPatchNotes().map(n => n.category || 'General'));
+  cats.add('General');
+  return [...cats].sort();
+}
+
 function renderPatchNotes() {
-  const content = document.getElementById('patch-notes-content');
-  const btn = document.getElementById('patch-notes-toggle-btn');
-  if (content && btn) {
-    const visible = isPatchNotesVisible();
-    content.style.display = visible ? 'block' : 'none';
-    btn.textContent = visible ? 'Hide' : 'Show';
-  }
+  renderPatchCategoryDatalist();
+
   const wrap = document.getElementById('patch-notes-list');
   if (!wrap) return;
   wrap.innerHTML = '';
-  const notes = getPatchNotes().slice().sort((a, b) => b.date.localeCompare(a.date));
+  const notes = getPatchNotes();
   if (notes.length === 0) {
     wrap.innerHTML = '<div class="empty-state">No patch notes yet — add the first one above.</div>';
     return;
   }
+
+  const byCategory = {};
   notes.forEach(n => {
-    const entry = document.createElement('div');
-    entry.className = 'patch-entry';
-    const top = document.createElement('div');
-    top.className = 'patch-top-line';
-    const left = document.createElement('div');
-    const date = document.createElement('div');
-    date.className = 'patch-date';
-    date.textContent = new Date(n.date + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
-    left.appendChild(date);
-    const title = document.createElement('div');
-    title.className = 'patch-title';
-    title.textContent = n.title;
-    left.appendChild(title);
-    top.appendChild(left);
-    const del = document.createElement('button');
-    del.className = 'delete-btn';
-    del.textContent = '✕';
-    del.title = 'Remove this patch note';
-    del.onclick = async () => {
-      const updated = getPatchNotes().filter(x => x.id !== n.id);
-      await savePatchNotes(updated);
+    const cat = n.category || 'General';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(n);
+  });
+
+  Object.keys(byCategory).sort().forEach(cat => {
+    const catNotes = byCategory[cat].sort((a, b) => b.date.localeCompare(a.date));
+    const isOpen = !collapsedPatchCategories.has(cat);
+
+    const group = document.createElement('div');
+    group.className = 'category-group';
+
+    const header = document.createElement('div');
+    header.className = 'category-header' + (isOpen ? ' open' : '');
+    header.innerHTML = `<span class="chevron">▸</span><span class="category-name">${cat}</span><span class="category-count">${catNotes.length}</span>`;
+    header.onclick = () => {
+      if (collapsedPatchCategories.has(cat)) collapsedPatchCategories.delete(cat);
+      else collapsedPatchCategories.add(cat);
       renderPatchNotes();
     };
-    top.appendChild(del);
-    entry.appendChild(top);
-    if (n.details) {
-      const details = document.createElement('div');
-      details.className = 'patch-details';
-      details.textContent = n.details;
-      entry.appendChild(details);
-    }
-    wrap.appendChild(entry);
+    group.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'category-body' + (isOpen ? ' open' : '');
+
+    catNotes.forEach(n => {
+      const entry = document.createElement('div');
+      entry.className = 'patch-entry';
+      const top = document.createElement('div');
+      top.className = 'patch-top-line';
+      const left = document.createElement('div');
+      const date = document.createElement('div');
+      date.className = 'patch-date';
+      date.textContent = new Date(n.date + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+      left.appendChild(date);
+      const title = document.createElement('div');
+      title.className = 'patch-title';
+      title.textContent = n.title;
+      left.appendChild(title);
+      top.appendChild(left);
+
+      const btnGroup = document.createElement('div');
+      btnGroup.style.cssText = 'display:flex; gap:6px; flex-shrink:0; align-items:center;';
+      const catSelect = buildCategorySelect(getPatchCategoriesList(), n.category || 'General', async (newCat) => {
+        const updated = getPatchNotes().map(x => x.id === n.id ? { ...x, category: newCat } : x);
+        await savePatchNotes(updated);
+        renderPatchNotes();
+      });
+      btnGroup.appendChild(catSelect);
+      const edit = document.createElement('button');
+      edit.className = 'entry-edit-btn';
+      edit.textContent = 'Edit';
+      edit.onclick = () => startEditPatch(n);
+      btnGroup.appendChild(edit);
+      const del = document.createElement('button');
+      del.className = 'delete-btn';
+      del.textContent = '✕';
+      del.title = 'Remove this patch note';
+      del.onclick = async () => {
+        const updated = getPatchNotes().filter(x => x.id !== n.id);
+        await savePatchNotes(updated);
+        renderPatchNotes();
+      };
+      btnGroup.appendChild(del);
+      top.appendChild(btnGroup);
+      entry.appendChild(top);
+
+      if (n.details) {
+        const details = document.createElement('div');
+        details.className = 'patch-details';
+        details.textContent = n.details;
+        entry.appendChild(details);
+      }
+      body.appendChild(entry);
+    });
+
+    group.appendChild(body);
+    wrap.appendChild(group);
   });
 }
-document.getElementById('patch-notes-toggle-btn').onclick = () => {
-  setPatchNotesVisible(!isPatchNotesVisible());
-  renderPatchNotes();
-};
+
+function startEditPatch(n) {
+  editingPatchId = n.id;
+  document.getElementById('patch-category-input').value = n.category || '';
+  document.getElementById('patch-date-input').value = n.date;
+  document.getElementById('patch-title-input').value = n.title;
+  document.getElementById('patch-details-input').value = n.details || '';
+  document.getElementById('add-patch-btn').textContent = 'Save changes';
+  document.getElementById('cancel-patch-edit-btn').style.display = 'inline-block';
+  document.getElementById('patch-title-input').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function resetPatchForm() {
+  editingPatchId = null;
+  document.getElementById('patch-category-input').value = '';
+  document.getElementById('patch-date-input').value = todayISO();
+  document.getElementById('patch-title-input').value = '';
+  document.getElementById('patch-details-input').value = '';
+  document.getElementById('add-patch-btn').textContent = 'Add patch note';
+  document.getElementById('cancel-patch-edit-btn').style.display = 'none';
+}
+document.getElementById('cancel-patch-edit-btn').onclick = resetPatchForm;
 document.getElementById('add-patch-btn').onclick = async () => {
+  const categoryInput = document.getElementById('patch-category-input');
   const dateInput = document.getElementById('patch-date-input');
   const titleInput = document.getElementById('patch-title-input');
   const detailsInput = document.getElementById('patch-details-input');
+  const category = categoryInput.value.trim() || 'General';
   const date = dateInput.value || todayISO();
   const title = titleInput.value.trim();
   const details = detailsInput.value.trim();
   if (!title) { alert('Give it a title at least.'); return; }
-  const note = { id: `p-${Date.now()}`, date, title, details };
-  const updated = [...getPatchNotes(), note];
+
+  const current = getPatchNotes();
+  let updated;
+  if (editingPatchId) {
+    updated = current.map(n => n.id === editingPatchId ? { ...n, category, date, title, details } : n);
+  } else {
+    updated = [...current, { id: `p-${Date.now()}`, category, date, title, details }];
+  }
   await savePatchNotes(updated);
-  dateInput.value = '';
-  titleInput.value = '';
-  detailsInput.value = '';
+  resetPatchForm();
   renderPatchNotes();
 };
 
@@ -3080,81 +3374,365 @@ async function saveTickets(list) {
   settings.tickets = JSON.stringify(list);
   try { await apiSetSetting('tickets', settings.tickets); } catch (e) { console.error('Failed to save tickets', e); }
 }
+const TICKET_LOG_VISIBLE_KEY = 'punchboard-ticketlog-visible';
+function isTicketLogVisible() { return localStorage.getItem(TICKET_LOG_VISIBLE_KEY) === 'true'; }
+function setTicketLogVisible(v) { localStorage.setItem(TICKET_LOG_VISIBLE_KEY, v ? 'true' : 'false'); }
+
 let openTicketIds = new Set();
+let collapsedTicketCategories = new Set();
+let editingTicketId = null;
+
+function renderTicketCategoryDatalist() {
+  const dl = document.getElementById('ticket-category-datalist');
+  if (!dl) return;
+  const cats = [...new Set(getTickets().map(t => t.category || 'General'))].sort();
+  dl.innerHTML = cats.map(c => `<option value="${c}"></option>`).join('');
+}
+function getTicketCategoriesList() {
+  const cats = new Set(getTickets().map(t => t.category || 'General'));
+  cats.add('General');
+  return [...cats].sort();
+}
+
 function renderTickets() {
+  const content = document.getElementById('ticket-log-content');
+  const toggleBtn = document.getElementById('ticket-log-toggle-btn');
+  if (content && toggleBtn) {
+    const visible = isTicketLogVisible();
+    content.style.display = visible ? 'block' : 'none';
+    toggleBtn.textContent = visible ? 'Hide' : 'Show';
+  }
+  renderTicketCategoryDatalist();
+
   const wrap = document.getElementById('ticket-list');
   if (!wrap) return;
   wrap.innerHTML = '';
-  const tickets = getTickets().slice().sort((a, b) => b.date.localeCompare(a.date));
+  const tickets = getTickets();
   if (tickets.length === 0) {
     wrap.innerHTML = '<div class="empty-state">No tickets logged yet — the first one you add builds the FAQ.</div>';
     return;
   }
+
+  const byCategory = {};
   tickets.forEach(t => {
-    const item = document.createElement('div');
-    item.className = 'ticket-item' + (openTicketIds.has(t.id) ? ' open' : '');
+    const cat = t.category || 'General';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(t);
+  });
 
-    const question = document.createElement('div');
-    question.className = 'ticket-question';
-    const dot = document.createElement('span');
-    dot.className = 'dot';
-    dot.style.background = COLORS[t.person] || 'var(--faint)';
-    question.appendChild(dot);
-    const qText = document.createElement('span');
-    qText.className = 'ticket-question-text';
-    qText.textContent = t.issue;
-    question.appendChild(qText);
-    const chevron = document.createElement('span');
-    chevron.className = 'ticket-chevron';
-    chevron.textContent = '▸';
-    question.appendChild(chevron);
-    question.onclick = () => {
-      if (openTicketIds.has(t.id)) openTicketIds.delete(t.id);
-      else openTicketIds.add(t.id);
+  Object.keys(byCategory).sort().forEach(cat => {
+    const catTickets = byCategory[cat].sort((a, b) => b.date.localeCompare(a.date));
+    const isOpen = !collapsedTicketCategories.has(cat);
+
+    const group = document.createElement('div');
+    group.className = 'category-group';
+
+    const header = document.createElement('div');
+    header.className = 'category-header' + (isOpen ? ' open' : '');
+    header.innerHTML = `<span class="chevron">▸</span><span class="category-name">${cat}</span><span class="category-count">${catTickets.length}</span>`;
+    header.onclick = () => {
+      if (collapsedTicketCategories.has(cat)) collapsedTicketCategories.delete(cat);
+      else collapsedTicketCategories.add(cat);
       renderTickets();
     };
-    item.appendChild(question);
+    group.appendChild(header);
 
-    const answer = document.createElement('div');
-    answer.className = 'ticket-answer';
-    answer.textContent = t.resolution;
-    const meta = document.createElement('div');
-    meta.className = 'ticket-meta';
-    meta.textContent = `Logged by ${t.person} · ${new Date(t.date + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}`;
-    answer.appendChild(meta);
-    const del = document.createElement('button');
-    del.className = 'delete-btn';
-    del.textContent = '✕ remove';
-    del.style.marginTop = '8px';
-    del.style.fontSize = '11px';
-    del.style.fontFamily = "'IBM Plex Mono', monospace";
-    del.onclick = async (ev) => {
-      ev.stopPropagation();
-      const updated = getTickets().filter(x => x.id !== t.id);
-      await saveTickets(updated);
-      openTicketIds.delete(t.id);
-      renderTickets();
-    };
-    answer.appendChild(del);
-    item.appendChild(answer);
+    const body = document.createElement('div');
+    body.className = 'category-body' + (isOpen ? ' open' : '');
 
-    wrap.appendChild(item);
+    catTickets.forEach(t => {
+      const item = document.createElement('div');
+      item.className = 'ticket-item' + (openTicketIds.has(t.id) ? ' open' : '');
+
+      const question = document.createElement('div');
+      question.className = 'ticket-question';
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = COLORS[t.person] || 'var(--faint)';
+      question.appendChild(dot);
+      const qText = document.createElement('span');
+      qText.className = 'ticket-question-text';
+      qText.textContent = t.issue;
+      question.appendChild(qText);
+      const chevron = document.createElement('span');
+      chevron.className = 'ticket-chevron';
+      chevron.textContent = '▸';
+      question.appendChild(chevron);
+      question.onclick = () => {
+        if (openTicketIds.has(t.id)) openTicketIds.delete(t.id);
+        else openTicketIds.add(t.id);
+        renderTickets();
+      };
+      item.appendChild(question);
+
+      const answer = document.createElement('div');
+      answer.className = 'ticket-answer';
+      answer.textContent = t.resolution;
+      const meta = document.createElement('div');
+      meta.className = 'ticket-meta';
+      meta.textContent = `Logged by ${t.person} · ${new Date(t.date + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}`;
+      answer.appendChild(meta);
+
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap;';
+      const catSelect = buildCategorySelect(getTicketCategoriesList(), t.category || 'General', async (newCat) => {
+        const updated = getTickets().map(x => x.id === t.id ? { ...x, category: newCat } : x);
+        await saveTickets(updated);
+        renderTickets();
+      });
+      catSelect.onclick = (ev) => ev.stopPropagation();
+      btnRow.appendChild(catSelect);
+      const edit = document.createElement('button');
+      edit.className = 'entry-edit-btn';
+      edit.textContent = 'Edit';
+      edit.onclick = (ev) => { ev.stopPropagation(); startEditTicket(t); };
+      btnRow.appendChild(edit);
+      const del = document.createElement('button');
+      del.className = 'delete-btn';
+      del.textContent = '✕ remove';
+      del.style.fontSize = '11px';
+      del.style.fontFamily = "'IBM Plex Mono', monospace";
+      del.onclick = async (ev) => {
+        ev.stopPropagation();
+        const updated = getTickets().filter(x => x.id !== t.id);
+        await saveTickets(updated);
+        openTicketIds.delete(t.id);
+        renderTickets();
+      };
+      btnRow.appendChild(del);
+      answer.appendChild(btnRow);
+
+      item.appendChild(answer);
+      body.appendChild(item);
+    });
+
+    group.appendChild(body);
+    wrap.appendChild(group);
   });
 }
+
+function startEditTicket(t) {
+  editingTicketId = t.id;
+  document.getElementById('ticket-category-input').value = t.category || '';
+  document.getElementById('ticket-person-input').value = t.person;
+  document.getElementById('ticket-issue-input').value = t.issue;
+  document.getElementById('ticket-resolution-input').value = t.resolution;
+  document.getElementById('add-ticket-btn').textContent = 'Save changes';
+  document.getElementById('cancel-ticket-edit-btn').style.display = 'inline-block';
+  document.getElementById('ticket-issue-input').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function resetTicketForm() {
+  editingTicketId = null;
+  document.getElementById('ticket-category-input').value = '';
+  document.getElementById('ticket-issue-input').value = '';
+  document.getElementById('ticket-resolution-input').value = '';
+  document.getElementById('add-ticket-btn').textContent = 'Log ticket';
+  document.getElementById('cancel-ticket-edit-btn').style.display = 'none';
+  applyIdentityDefaults(); // restore the person dropdown to whoAmI
+}
+document.getElementById('cancel-ticket-edit-btn').onclick = resetTicketForm;
+document.getElementById('ticket-log-toggle-btn').onclick = () => {
+  setTicketLogVisible(!isTicketLogVisible());
+  renderTickets();
+};
 document.getElementById('add-ticket-btn').onclick = async () => {
+  const categoryInput = document.getElementById('ticket-category-input');
   const personInput = document.getElementById('ticket-person-input');
   const issueInput = document.getElementById('ticket-issue-input');
   const resolutionInput = document.getElementById('ticket-resolution-input');
+  const category = categoryInput.value.trim() || 'General';
   const person = personInput.value;
   const issue = issueInput.value.trim();
   const resolution = resolutionInput.value.trim();
   if (!issue || !resolution) { alert('Fill in both the issue and how it was solved.'); return; }
-  const ticket = { id: `t-${Date.now()}`, date: todayISO(), person, issue, resolution };
-  const updated = [...getTickets(), ticket];
+
+  const current = getTickets();
+  let updated;
+  if (editingTicketId) {
+    updated = current.map(t => t.id === editingTicketId ? { ...t, category, person, issue, resolution } : t);
+  } else {
+    updated = [...current, { id: `t-${Date.now()}`, date: todayISO(), category, person, issue, resolution }];
+  }
   await saveTickets(updated);
-  issueInput.value = '';
-  resolutionInput.value = '';
+  resetTicketForm();
   renderTickets();
+};
+
+/* =========================================================================
+   GOAL TRACKER — shared progress trackers like "Audit 2026". Each
+   person logs their own completed/total; percentage is computed.
+   Same settings-based storage as everything else in the Vault, and
+   the same archive pattern as Football Bets wagers (archived goals
+   move out of the active list but aren't lost).
+   ========================================================================= */
+function getGoals() {
+  try { return JSON.parse(settings.goals || '[]'); } catch (e) { return []; }
+}
+async function saveGoals(list) {
+  settings.goals = JSON.stringify(list);
+  try { await apiSetSetting('goals', settings.goals); } catch (e) { console.error('Failed to save goals', e); }
+}
+let showArchivedGoals = false;
+
+function blankGoalProgress() {
+  const progress = {};
+  PEOPLE.forEach(p => { progress[p] = { completed: 0, total: 0 }; });
+  return progress;
+}
+
+function buildGoalCard(g, isArchived) {
+  const card = document.createElement('div');
+  card.className = 'goal-card' + (isArchived ? ' archived' : '');
+
+  const top = document.createElement('div');
+  top.className = 'goal-top';
+  const name = document.createElement('div');
+  name.className = 'goal-name';
+  name.textContent = g.name;
+  top.appendChild(name);
+
+  const btnRow = document.createElement('div');
+  btnRow.className = 'goal-btn-row';
+  const archiveBtn = document.createElement('button');
+  archiveBtn.className = 'archive-btn';
+  archiveBtn.textContent = isArchived ? 'Unarchive' : 'Archive';
+  archiveBtn.onclick = async () => {
+    const updated = getGoals().map(x => x.id === g.id ? { ...x, archived: !isArchived } : x);
+    await saveGoals(updated);
+    renderGoalTracker();
+  };
+  btnRow.appendChild(archiveBtn);
+  const del = document.createElement('button');
+  del.className = 'delete-btn';
+  del.textContent = '✕';
+  del.title = 'Delete this goal entirely';
+  del.onclick = async () => {
+    if (!confirm(`Delete "${g.name}"? This can't be undone.`)) return;
+    const updated = getGoals().filter(x => x.id !== g.id);
+    await saveGoals(updated);
+    renderGoalTracker();
+  };
+  btnRow.appendChild(del);
+  top.appendChild(btnRow);
+  card.appendChild(top);
+
+  PEOPLE.forEach(p => {
+    const prog = (g.progress && g.progress[p]) || { completed: 0, total: 0 };
+    const pct = prog.total > 0 ? Math.round((prog.completed / prog.total) * 100) : 0;
+
+    const row = document.createElement('div');
+    row.className = 'goal-progress-row';
+    const rowTop = document.createElement('div');
+    rowTop.className = 'goal-progress-top';
+    const pName = document.createElement('span');
+    pName.className = 'goal-progress-name';
+    pName.textContent = p;
+    pName.style.color = COLORS[p];
+    rowTop.appendChild(pName);
+
+    const inputsWrap = document.createElement('span');
+    inputsWrap.className = 'goal-progress-inputs';
+    const completedInput = document.createElement('input');
+    completedInput.type = 'number';
+    completedInput.min = '0';
+    completedInput.className = 'score-input';
+    completedInput.value = prog.completed;
+    completedInput.disabled = isArchived;
+    const sep = document.createElement('span');
+    sep.className = 'score-sep';
+    sep.textContent = '/';
+    const totalInput = document.createElement('input');
+    totalInput.type = 'number';
+    totalInput.min = '0';
+    totalInput.className = 'score-input';
+    totalInput.value = prog.total;
+    totalInput.disabled = isArchived;
+
+    const commitChange = async () => {
+      const completed = Math.max(0, parseInt(completedInput.value) || 0);
+      const total = Math.max(0, parseInt(totalInput.value) || 0);
+      const updated = getGoals().map(x => {
+        if (x.id !== g.id) return x;
+        const newProgress = { ...(x.progress || blankGoalProgress()) };
+        newProgress[p] = { completed, total };
+        return { ...x, progress: newProgress };
+      });
+      await saveGoals(updated);
+      renderGoalTracker();
+    };
+    completedInput.onchange = commitChange;
+    totalInput.onchange = commitChange;
+
+    inputsWrap.appendChild(completedInput);
+    inputsWrap.appendChild(sep);
+    inputsWrap.appendChild(totalInput);
+    rowTop.appendChild(inputsWrap);
+
+    const pctEl = document.createElement('span');
+    pctEl.className = 'goal-progress-pct';
+    pctEl.style.color = pct >= 100 ? '#2E9B5C' : 'var(--muted)';
+    pctEl.textContent = `${pct}%`;
+    rowTop.appendChild(pctEl);
+    row.appendChild(rowTop);
+
+    const track = document.createElement('div');
+    track.className = 'hours-bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'hours-bar-fill';
+    fill.style.width = `${Math.min(pct, 100)}%`;
+    fill.style.background = COLORS[p];
+    track.appendChild(fill);
+    row.appendChild(track);
+
+    card.appendChild(row);
+  });
+
+  return card;
+}
+
+function renderGoalTracker() {
+  const goals = getGoals();
+  const active = goals.filter(g => !g.archived);
+  const archived = goals.filter(g => g.archived);
+
+  const activeWrap = document.getElementById('goal-list');
+  if (activeWrap) {
+    activeWrap.innerHTML = '';
+    if (active.length === 0) {
+      activeWrap.innerHTML = '<div class="empty-state">No goals yet — add one above, e.g. "Audit 2026".</div>';
+    } else {
+      active.forEach(g => activeWrap.appendChild(buildGoalCard(g, false)));
+    }
+  }
+
+  const archivedToggleBtn = document.getElementById('toggle-archived-goals-btn');
+  const archivedWrap = document.getElementById('archived-goal-list');
+  if (archivedToggleBtn) archivedToggleBtn.textContent = showArchivedGoals ? 'Hide archived goals' : `Show archived goals (${archived.length})`;
+  if (archivedWrap) {
+    archivedWrap.style.display = showArchivedGoals ? 'block' : 'none';
+    archivedWrap.innerHTML = '';
+    if (showArchivedGoals) {
+      if (archived.length === 0) {
+        archivedWrap.innerHTML = '<div class="empty-state">Nothing archived yet.</div>';
+      } else {
+        archived.forEach(g => archivedWrap.appendChild(buildGoalCard(g, true)));
+      }
+    }
+  }
+}
+document.getElementById('toggle-archived-goals-btn').onclick = () => {
+  showArchivedGoals = !showArchivedGoals;
+  renderGoalTracker();
+};
+document.getElementById('add-goal-btn').onclick = async () => {
+  const input = document.getElementById('goal-name-input');
+  const name = input.value.trim();
+  if (!name) { alert('Give the goal a name.'); return; }
+  const goal = { id: `g-${Date.now()}`, name, date: todayISO(), archived: false, progress: blankGoalProgress() };
+  const updated = [...getGoals(), goal];
+  await saveGoals(updated);
+  input.value = '';
+  renderGoalTracker();
 };
 
 /* ---------------------------------------------------------------------

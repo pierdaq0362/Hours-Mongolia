@@ -392,6 +392,7 @@
     width: 68px; flex-shrink: 0;
   }
   .holiday-label { flex: 1; font-weight: 600; }
+  .suggestion-text { flex: 1; font-size: 13px; line-height: 1.4; }
   .holiday-today-tag {
     font-size: 10px; font-family: 'IBM Plex Mono', monospace; font-weight: 600;
     color: #fff; background: var(--luigi); padding: 2px 7px; border-radius: 999px; flex-shrink: 0;
@@ -709,7 +710,7 @@
     </div>
   </header>
 
-  <div class="champion-banner">🇪🇸 🏆 SPAIN — 2026 WORLD CUP CHAMPIONS 🏆 🇪🇸</div>
+  <div class="champion-banner" id="champion-banner">🇪🇸 🏆 SPAIN — 2026 WORLD CUP CHAMPIONS 🏆 🇪🇸</div>
 
   <div class="pulse-banner">
     <span class="pulse-dot"></span>
@@ -993,18 +994,27 @@
     <section class="panel">
       <div class="panel-label">GUESS THE WORLD CUP WINNER</div>
       <div class="panel-sub">Worth a full day of free beers. Enter the real winner once the final's done.</div>
-      <div id="winner-predict"></div>
-      <div class="form-row" style="margin-top:6px;">
-        <div class="form-field">
-          <label class="form-label">Actual World Cup winner</label>
-          <input type="text" id="actual-winner-input" placeholder="Enter once the final is played" />
+
+      <div id="winner-guess-active">
+        <div id="winner-predict"></div>
+        <div class="form-row" style="margin-top:6px;">
+          <div class="form-field">
+            <label class="form-label">Actual World Cup winner</label>
+            <input type="text" id="actual-winner-input" placeholder="Enter once the final is played" />
+          </div>
         </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="add-btn" id="save-winner-btn">Save winner</button>
+          <button class="archive-btn" id="archive-winner-btn">Archive</button>
+        </div>
+        <div id="winner-result" style="margin-top:10px; font-size:13px; color: var(--muted);"></div>
       </div>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <button class="add-btn" id="save-winner-btn">Save winner</button>
-        <button class="archive-btn" id="archive-winner-btn">Archive</button>
+
+      <div id="winner-guess-hidden-notice" style="display:none;">
+        <div class="empty-state">Archived — the win is recorded on the Beer Scoreboard and in the history below.</div>
+        <button class="archive-btn" id="unhide-winner-btn" style="margin-top:8px;">Start guesses for next tournament</button>
       </div>
-      <div id="winner-result" style="margin-top:10px; font-size:13px; color: var(--muted);"></div>
+
       <div id="world-cup-history" style="margin-top:14px;"></div>
     </section>
 
@@ -1119,6 +1129,31 @@
           </div>
           <div id="ticket-list" style="margin-top:16px;"></div>
         </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-label">💡 SUGGESTION BOX</div>
+        <div class="panel-sub">Got an idea for a new feature? Drop it here — nobody has to wonder if it got lost in a group chat.</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Who</label>
+            <select id="suggestion-person-input">
+              <option value="Luigi">Luigi</option>
+              <option value="Juan">Juan</option>
+              <option value="Sergio">Sergio</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">Suggestion</label>
+            <textarea id="suggestion-text-input" rows="2" placeholder="e.g. Add a dark mode" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+          </div>
+        </div>
+        <button class="add-btn" id="add-suggestion-btn">Add suggestion</button>
+        <div id="suggestion-list" style="margin-top:16px;"></div>
+        <button class="archive-btn" id="toggle-done-suggestions-btn" style="margin-top:10px;">Show done suggestions</button>
+        <div id="done-suggestion-list" style="margin-top:12px; display:none;"></div>
       </section>
 
     </div>
@@ -1285,10 +1320,12 @@ function applyIdentityDefaults() {
     const bp = document.getElementById('backfill-person');
     const hp = document.getElementById('holiday-person-input');
     const tp = document.getElementById('ticket-person-input');
+    const sp = document.getElementById('suggestion-person-input');
     if (mp) mp.value = whoAmI;
     if (bp) bp.value = whoAmI;
     if (hp) hp.value = whoAmI;
     if (tp) tp.value = whoAmI;
+    if (sp) sp.value = whoAmI;
   } else {
     indicator.textContent = "Who's this?";
   }
@@ -1304,7 +1341,7 @@ function syncMoodToIdentity() {
 document.getElementById('whoami-switch-btn').onclick = showIdentityModal;
 
 /* =========================================================================
-   SECRETS — 6 hidden easter eggs. No hints anywhere in the normal UI;
+   SECRETS — 8 hidden easter eggs. No hints anywhere in the normal UI;
    each has a different unlock method on purpose. The 🥚 EGGS drawer on
    the right lets anyone check progress (theirs and the crew's) and
    optionally reveal a hint per egg, without spelling out the mechanism
@@ -1318,14 +1355,18 @@ document.getElementById('whoami-switch-btn').onclick = showIdentityModal;
       Sergio → Luigi → Juan.
    5. Press and hold the 🔒 Vault tab label for 3 seconds.
    6. Leave the app open and untouched for 60 seconds.
+   7. Tap the Spain champions banner 3 times fast.
+   8. Type the word "campeones" anywhere on the page.
    ========================================================================= */
 const EGG_DEFINITIONS = [
-  { key: 'title-tap',    name: 'Motormouth', hint: "Something about the app's own name wants attention. Multiple times. Quickly." },
-  { key: 'konami',       name: 'Old School',  hint: "Old-school gamers might recognize this one. Needs a physical keyboard." },
-  { key: 'grind-word',   name: 'Loose Lips',  hint: "Type it. Anywhere on the page. No text box required." },
-  { key: 'dot-sequence', name: 'Roll Call',   hint: "The colored dots on Time Clock know an order. Sergio goes first." },
-  { key: 'vault-hold',   name: 'Patience',    hint: "Some locks reward whoever doesn't let go too soon." },
-  { key: 'idle',         name: 'Statue',      hint: "Sometimes the trick is doing absolutely nothing for a while." },
+  { key: 'title-tap',      name: 'Motormouth',   hint: "Something about the app's own name wants attention. Multiple times. Quickly." },
+  { key: 'konami',         name: 'Old School',   hint: "Old-school gamers might recognize this one. Needs a physical keyboard." },
+  { key: 'grind-word',     name: 'Loose Lips',   hint: "Type it. Anywhere on the page. No text box required." },
+  { key: 'dot-sequence',   name: 'Roll Call',    hint: "The colored dots on Time Clock know an order. Sergio goes first." },
+  { key: 'vault-hold',     name: 'Patience',     hint: "Some locks reward whoever doesn't let go too soon." },
+  { key: 'idle',           name: 'Statue',       hint: "Sometimes the trick is doing absolutely nothing for a while." },
+  { key: 'champion-tap',   name: 'Olé Olé Olé',  hint: "That red and yellow banner isn't just for looking at. Tap it. A few times, quickly." },
+  { key: 'campeones-word', name: 'Campeones',    hint: "Somebody's speaking Spanish. Try typing their word for 'champions' — anywhere on the page." },
 ];
 
 function spawnConfetti() {
@@ -1567,6 +1608,48 @@ setInterval(() => {
     showEgg({ eyebrow: '🗿 STILL THERE?', title: "You didn't move.", messages: IDLE_MESSAGES, shower: 'confetti', eggKey: 'idle' });
   }
 }, 5000);
+
+/* --- Secret 7: tap the Spain champions banner 3 times fast --- */
+const CHAMPION_TAP_MESSAGES = [
+  "Olé olé olé, olé olé — you found it.",
+  "Spain approves of this level of enthusiasm.",
+  "Three taps for the champions. Seems fair.",
+];
+let championTapCount = 0;
+let championTapResetTimer = null;
+const championBannerEl = document.getElementById('champion-banner');
+if (championBannerEl) {
+  championBannerEl.style.cursor = 'pointer';
+  championBannerEl.addEventListener('click', () => {
+    championTapCount++;
+    clearTimeout(championTapResetTimer);
+    championTapResetTimer = setTimeout(() => { championTapCount = 0; }, 1500);
+    if (championTapCount >= 3) {
+      championTapCount = 0;
+      showEgg({ eyebrow: '🇪🇸 OLÉ', title: 'Olé olé olé.', messages: CHAMPION_TAP_MESSAGES, shower: 'confetti', eggKey: 'champion-tap' });
+    }
+  });
+}
+
+/* --- Secret 8: type "campeones" anywhere on the page --- */
+const CAMPEONES_WORD = 'campeones';
+const CAMPEONES_MESSAGES = [
+  "Campeones del mundo. You typed it, so it's official now.",
+  "Somewhere, a Spanish commentator is very proud of you.",
+  "That word has been said a lot this year. Add it to the list.",
+];
+let campeonesBuffer = '';
+document.addEventListener('keydown', (e) => {
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return; // don't hijack typing in forms
+  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+    campeonesBuffer = (campeonesBuffer + e.key.toLowerCase()).slice(-CAMPEONES_WORD.length);
+    if (campeonesBuffer === CAMPEONES_WORD) {
+      campeonesBuffer = '';
+      showEgg({ eyebrow: '🏆 CAMPEONES', title: 'Campeones del mundo.', messages: CAMPEONES_MESSAGES, shower: 'confetti', eggKey: 'campeones-word' });
+    }
+  }
+});
 
 /* ---------------------------------------------------------------------
    Archived wagers — persisted via the existing 'setSetting' action
@@ -2755,7 +2838,11 @@ function renderBetsScoreboard() {
     name.className = 'beer-name';
     name.textContent = p;
     const pick = winnerPicks.find(w => w.person === p);
-    if (actualWinner && pick && pick.prediction.toLowerCase() === actualWinner.toLowerCase()) {
+    const calledLive = actualWinner && pick && pick.prediction && pick.prediction.toLowerCase() === actualWinner.toLowerCase();
+    const history = getWorldCupHistory();
+    const latestHistory = history.length ? history.slice().sort((a, b) => b.date.localeCompare(a.date))[0] : null;
+    const calledHistoric = latestHistory && latestHistory.callers.includes(p);
+    if (calledLive || calledHistoric) {
       const tag = document.createElement('span');
       tag.className = 'beer-champ-tag';
       tag.textContent = '🏆 called it';
@@ -2983,6 +3070,15 @@ document.getElementById('add-match-btn').onclick = async () => {
   try { await apiAddMatch(match); } catch (e) { console.error(e); }
 };
 function renderWinnerPredict() {
+  const isHidden = settings.worldCupHidden === 'true';
+  const activeEl = document.getElementById('winner-guess-active');
+  const hiddenEl = document.getElementById('winner-guess-hidden-notice');
+  if (activeEl && hiddenEl) {
+    activeEl.style.display = isHidden ? 'none' : 'block';
+    hiddenEl.style.display = isHidden ? 'block' : 'none';
+  }
+  if (isHidden) return;
+
   const wrap = document.getElementById('winner-predict');
   wrap.innerHTML = '';
   PEOPLE.forEach(p => {
@@ -3084,7 +3180,7 @@ document.getElementById('archive-winner-btn').onclick = async () => {
     const pick = winnerPicks.find(w => w.person === p);
     return pick && pick.prediction && pick.prediction.toLowerCase() === winner.toLowerCase();
   });
-  if (!confirm(`Archive "${winner}" as champion${callers.length ? ` (called by ${callers.join(' & ')})` : ''}? This clears everyone's picks and the winner field for the next tournament.`)) return;
+  if (!confirm(`Archive "${winner}" as champion${callers.length ? ` (called by ${callers.join(' & ')})` : ''}? This clears everyone's picks, hides this box, and credits the win on the Beer Scoreboard permanently.`)) return;
 
   const record = { id: `wc-${Date.now()}`, winner, callers, date: todayISO() };
   await saveWorldCupHistory([...getWorldCupHistory(), record]);
@@ -3098,9 +3194,17 @@ document.getElementById('archive-winner-btn').onclick = async () => {
   settings.actualWinner = '';
   try { await apiSetSetting('actualWinner', ''); } catch (e) { console.error(e); }
 
+  settings.worldCupHidden = 'true';
+  try { await apiSetSetting('worldCupHidden', 'true'); } catch (e) { console.error(e); }
+
   renderWinnerPredict();
   renderBetsScoreboard();
   renderWorldCupHistory();
+};
+document.getElementById('unhide-winner-btn').onclick = async () => {
+  settings.worldCupHidden = 'false';
+  try { await apiSetSetting('worldCupHidden', 'false'); } catch (e) { console.error(e); }
+  renderWinnerPredict();
 };
 function renderBetsTab() { renderBetsScoreboard(); renderMatchList(); renderWinnerPredict(); renderWorldCupHistory(); renderGoalTracker(); }
 
@@ -3146,6 +3250,7 @@ function renderVaultTab() {
   document.getElementById('vault-unlocked').style.display = unlocked ? 'block' : 'none';
   if (unlocked) {
     renderTickets();
+    renderSuggestions();
   }
 }
 function attemptVaultUnlock() {
@@ -3556,6 +3661,103 @@ document.getElementById('add-ticket-btn').onclick = async () => {
   await saveTickets(updated);
   resetTicketForm();
   renderTickets();
+};
+
+/* =========================================================================
+   SUGGESTION BOX — anyone logs a feature idea. Mark-done archives it
+   into a collapsible list (same pattern as Goal Tracker/wagers) rather
+   than deleting, so ideas aren't lost even once acted on.
+   ========================================================================= */
+function getSuggestions() {
+  try { return JSON.parse(settings.suggestions || '[]'); } catch (e) { return []; }
+}
+async function saveSuggestions(list) {
+  settings.suggestions = JSON.stringify(list);
+  try { await apiSetSetting('suggestions', settings.suggestions); } catch (e) { console.error('Failed to save suggestions', e); }
+}
+let showDoneSuggestions = false;
+
+function buildSuggestionRow(s, isDone) {
+  const row = document.createElement('div');
+  row.className = 'holiday-row';
+  const dot = document.createElement('span');
+  dot.className = 'dot';
+  dot.style.background = COLORS[s.person] || 'var(--faint)';
+  row.appendChild(dot);
+  const text = document.createElement('span');
+  text.className = 'suggestion-text';
+  text.textContent = s.text;
+  row.appendChild(text);
+  const date = document.createElement('span');
+  date.className = 'holiday-date';
+  date.textContent = new Date(s.date + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short' });
+  row.appendChild(date);
+  const toggle = document.createElement('button');
+  toggle.className = 'archive-btn';
+  toggle.textContent = isDone ? 'Restore' : 'Mark done';
+  toggle.onclick = async () => {
+    const updated = getSuggestions().map(x => x.id === s.id ? { ...x, done: !isDone } : x);
+    await saveSuggestions(updated);
+    renderSuggestions();
+  };
+  row.appendChild(toggle);
+  const del = document.createElement('button');
+  del.className = 'delete-btn';
+  del.textContent = '✕';
+  del.title = 'Remove this suggestion';
+  del.onclick = async () => {
+    const updated = getSuggestions().filter(x => x.id !== s.id);
+    await saveSuggestions(updated);
+    renderSuggestions();
+  };
+  row.appendChild(del);
+  return row;
+}
+
+function renderSuggestions() {
+  const suggestions = getSuggestions();
+  const active = suggestions.filter(s => !s.done);
+  const done = suggestions.filter(s => s.done);
+
+  const activeWrap = document.getElementById('suggestion-list');
+  if (activeWrap) {
+    activeWrap.innerHTML = '';
+    if (active.length === 0) {
+      activeWrap.innerHTML = '<div class="empty-state">No suggestions yet — add the first one above.</div>';
+    } else {
+      active.slice().sort((a, b) => b.date.localeCompare(a.date)).forEach(s => activeWrap.appendChild(buildSuggestionRow(s, false)));
+    }
+  }
+
+  const toggleBtn = document.getElementById('toggle-done-suggestions-btn');
+  const doneWrap = document.getElementById('done-suggestion-list');
+  if (toggleBtn) toggleBtn.textContent = showDoneSuggestions ? 'Hide done suggestions' : `Show done suggestions (${done.length})`;
+  if (doneWrap) {
+    doneWrap.style.display = showDoneSuggestions ? 'block' : 'none';
+    doneWrap.innerHTML = '';
+    if (showDoneSuggestions) {
+      if (done.length === 0) {
+        doneWrap.innerHTML = '<div class="empty-state">Nothing marked done yet.</div>';
+      } else {
+        done.slice().sort((a, b) => b.date.localeCompare(a.date)).forEach(s => doneWrap.appendChild(buildSuggestionRow(s, true)));
+      }
+    }
+  }
+}
+document.getElementById('toggle-done-suggestions-btn').onclick = () => {
+  showDoneSuggestions = !showDoneSuggestions;
+  renderSuggestions();
+};
+document.getElementById('add-suggestion-btn').onclick = async () => {
+  const personInput = document.getElementById('suggestion-person-input');
+  const textInput = document.getElementById('suggestion-text-input');
+  const text = textInput.value.trim();
+  if (!text) { alert('Write the suggestion first.'); return; }
+  const suggestion = { id: `s-${Date.now()}`, person: personInput.value, text, date: todayISO(), done: false };
+  const updated = [...getSuggestions(), suggestion];
+  await saveSuggestions(updated);
+  textInput.value = '';
+  renderSuggestions();
 };
 
 /* =========================================================================

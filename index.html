@@ -1019,13 +1019,39 @@
       <div class="panel-label">🎯 GOAL TRACKER</div>
       <div class="panel-sub">Shared goals like "Audit 2026" — everyone logs their own progress, percentages update automatically.</div>
       <div class="form-row">
-        <div class="form-field" style="flex: 1 1 100%;">
-          <label class="form-label">New goal name</label>
+        <div class="form-field">
+          <label class="form-label">Category</label>
+          <input type="text" id="goal-category-input" list="goal-category-datalist" placeholder="e.g. Certifications" />
+          <datalist id="goal-category-datalist"></datalist>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Type</label>
+          <select id="goal-mode-input">
+            <option value="completion">Completion (x of y)</option>
+            <option value="target">Target number</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="flex: 2 1 200px;">
+          <label class="form-label">Goal name</label>
           <input type="text" id="goal-name-input" placeholder="e.g. Audit 2026" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">Unit (optional)</label>
+          <input type="text" id="goal-unit-input" placeholder="e.g. hours, $, reps" />
         </div>
       </div>
       <button class="add-btn" id="add-goal-btn">Add goal</button>
-      <div id="goal-list" style="margin-top:16px;"></div>
+
+      <div class="panel-label" style="margin-top:20px; margin-bottom:8px;">📊 PROGRESS CHART</div>
+      <div id="goal-chart"></div>
+
+      <div style="display:flex; gap:8px; margin-top:18px;">
+        <button class="archive-btn" id="goal-expand-all-btn">Expand all</button>
+        <button class="archive-btn" id="goal-collapse-all-btn">Collapse all</button>
+      </div>
+      <div id="goal-list" style="margin-top:10px;"></div>
       <button class="archive-btn" id="toggle-archived-goals-btn" style="margin-top:10px;">Show archived goals</button>
       <div id="archived-goal-list" style="margin-top:12px; display:none;"></div>
     </section>
@@ -1064,7 +1090,11 @@
         <button class="add-btn" id="add-patch-btn">Add patch note</button>
         <button class="archive-btn" id="cancel-patch-edit-btn" style="display:none;">Cancel edit</button>
       </div>
-      <div id="patch-notes-list" style="margin-top:16px;"></div>
+      <div style="display:flex; gap:8px; margin-top:16px;">
+        <button class="archive-btn" id="patch-expand-all-btn">Expand all</button>
+        <button class="archive-btn" id="patch-collapse-all-btn">Collapse all</button>
+      </div>
+      <div id="patch-notes-list" style="margin-top:10px;"></div>
     </section>
   </div>
 
@@ -1124,7 +1154,11 @@
             <button class="add-btn" id="add-ticket-btn">Log ticket</button>
             <button class="archive-btn" id="cancel-ticket-edit-btn" style="display:none;">Cancel edit</button>
           </div>
-          <div id="ticket-list" style="margin-top:16px;"></div>
+          <div style="display:flex; gap:8px; margin-top:16px;">
+            <button class="archive-btn" id="ticket-expand-all-btn">Expand all</button>
+            <button class="archive-btn" id="ticket-collapse-all-btn">Collapse all</button>
+          </div>
+          <div id="ticket-list" style="margin-top:10px;"></div>
         </div>
       </section>
 
@@ -3443,6 +3477,14 @@ function resetPatchForm() {
   document.getElementById('cancel-patch-edit-btn').style.display = 'none';
 }
 document.getElementById('cancel-patch-edit-btn').onclick = resetPatchForm;
+document.getElementById('patch-expand-all-btn').onclick = () => {
+  collapsedPatchCategories.clear();
+  renderPatchNotes();
+};
+document.getElementById('patch-collapse-all-btn').onclick = () => {
+  collapsedPatchCategories = new Set(getPatchCategoriesList());
+  renderPatchNotes();
+};
 document.getElementById('add-patch-btn').onclick = async () => {
   const categoryInput = document.getElementById('patch-category-input');
   const dateInput = document.getElementById('patch-date-input');
@@ -3634,6 +3676,14 @@ function resetTicketForm() {
   applyIdentityDefaults(); // restore the person dropdown to whoAmI
 }
 document.getElementById('cancel-ticket-edit-btn').onclick = resetTicketForm;
+document.getElementById('ticket-expand-all-btn').onclick = () => {
+  collapsedTicketCategories.clear();
+  renderTickets();
+};
+document.getElementById('ticket-collapse-all-btn').onclick = () => {
+  collapsedTicketCategories = new Set(getTicketCategoriesList());
+  renderTickets();
+};
 document.getElementById('ticket-log-toggle-btn').onclick = () => {
   setTicketLogVisible(!isTicketLogVisible());
   renderTickets();
@@ -3760,10 +3810,14 @@ document.getElementById('add-suggestion-btn').onclick = async () => {
 
 /* =========================================================================
    GOAL TRACKER — shared progress trackers like "Audit 2026". Each
-   person logs their own completed/total; percentage is computed.
-   Same settings-based storage as everything else in the Vault, and
-   the same archive pattern as Football Bets wagers (archived goals
-   move out of the active list but aren't lost).
+   person logs their own current/target; percentage is computed.
+   Same settings-based storage as everything else, and the same
+   archive pattern as wagers (archived goals move out but aren't
+   lost). Categories work exactly like Patch Notes/Tickets. A goal's
+   `mode` is either 'completion' (x of y, e.g. 16/26 audits) or
+   'target' (working toward a number, e.g. 420/500 hours) — both use
+   the same completed/total fields under the hood, just labeled and
+   displayed differently.
    ========================================================================= */
 function getGoals() {
   try { return JSON.parse(settings.goals || '[]'); } catch (e) { return []; }
@@ -3772,7 +3826,22 @@ async function saveGoals(list) {
   settings.goals = JSON.stringify(list);
   try { await apiSetSetting('goals', settings.goals); } catch (e) { console.error('Failed to save goals', e); }
 }
+function getGoalCategoriesList() {
+  const cats = new Set(getGoals().map(g => g.category || 'General'));
+  cats.add('General');
+  return [...cats].sort();
+}
+function renderGoalCategoryDatalist() {
+  const dl = document.getElementById('goal-category-datalist');
+  if (!dl) return;
+  dl.innerHTML = getGoalCategoriesList().map(c => `<option value="${c}"></option>`).join('');
+}
+function escapeXml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 let showArchivedGoals = false;
+let collapsedGoalCategories = new Set();
 
 function blankGoalProgress() {
   const progress = {};
@@ -3781,6 +3850,8 @@ function blankGoalProgress() {
 }
 
 function buildGoalCard(g, isArchived) {
+  const mode = g.mode || 'completion';
+  const unit = g.unit ? ` ${g.unit}` : '';
   const card = document.createElement('div');
   card.className = 'goal-card' + (isArchived ? ' archived' : '');
 
@@ -3793,6 +3864,12 @@ function buildGoalCard(g, isArchived) {
 
   const btnRow = document.createElement('div');
   btnRow.className = 'goal-btn-row';
+  const catSelect = buildCategorySelect(getGoalCategoriesList(), g.category || 'General', async (newCat) => {
+    const updated = getGoals().map(x => x.id === g.id ? { ...x, category: newCat } : x);
+    await saveGoals(updated);
+    renderGoalTracker();
+  });
+  btnRow.appendChild(catSelect);
   const archiveBtn = document.createElement('button');
   archiveBtn.className = 'archive-btn';
   archiveBtn.textContent = isArchived ? 'Unarchive' : 'Archive';
@@ -3815,6 +3892,13 @@ function buildGoalCard(g, isArchived) {
   btnRow.appendChild(del);
   top.appendChild(btnRow);
   card.appendChild(top);
+
+  if (mode === 'target') {
+    const sub = document.createElement('div');
+    sub.style.cssText = 'font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--faint); margin:-8px 0 10px; text-transform:uppercase; letter-spacing:0.06em;';
+    sub.textContent = `Target${g.unit ? ' · ' + g.unit : ''}`;
+    card.appendChild(sub);
+  }
 
   PEOPLE.forEach(p => {
     const prog = (g.progress && g.progress[p]) || { completed: 0, total: 0 };
@@ -3866,6 +3950,12 @@ function buildGoalCard(g, isArchived) {
     inputsWrap.appendChild(completedInput);
     inputsWrap.appendChild(sep);
     inputsWrap.appendChild(totalInput);
+    if (unit) {
+      const unitLabel = document.createElement('span');
+      unitLabel.style.cssText = 'font-size:11px; color:var(--faint); font-family:"IBM Plex Mono",monospace;';
+      unitLabel.textContent = unit;
+      inputsWrap.appendChild(unitLabel);
+    }
     rowTop.appendChild(inputsWrap);
 
     const pctEl = document.createElement('span');
@@ -3890,47 +3980,114 @@ function buildGoalCard(g, isArchived) {
   return card;
 }
 
+function renderGoalCategoryGroups(wrap, goalsList, isArchived) {
+  wrap.innerHTML = '';
+  if (goalsList.length === 0) {
+    wrap.innerHTML = isArchived
+      ? '<div class="empty-state">Nothing archived yet.</div>'
+      : '<div class="empty-state">No goals yet — add one above, e.g. "Audit 2026".</div>';
+    return;
+  }
+  const byCategory = {};
+  goalsList.forEach(g => {
+    const cat = g.category || 'General';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(g);
+  });
+  Object.keys(byCategory).sort().forEach(cat => {
+    const catGoals = byCategory[cat];
+    const isOpen = !collapsedGoalCategories.has(cat);
+
+    const group = document.createElement('div');
+    group.className = 'category-group';
+    const header = document.createElement('div');
+    header.className = 'category-header' + (isOpen ? ' open' : '');
+    header.innerHTML = `<span class="chevron">▸</span><span class="category-name">${cat}</span><span class="category-count">${catGoals.length}</span>`;
+    header.onclick = () => {
+      if (collapsedGoalCategories.has(cat)) collapsedGoalCategories.delete(cat);
+      else collapsedGoalCategories.add(cat);
+      renderGoalTracker();
+    };
+    group.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'category-body' + (isOpen ? ' open' : '');
+    catGoals.forEach(g => body.appendChild(buildGoalCard(g, isArchived)));
+    group.appendChild(body);
+
+    wrap.appendChild(group);
+  });
+}
+
+function buildGoalChartSVG(goals) {
+  if (goals.length === 0) return '<div class="empty-state">No active goals to chart yet.</div>';
+  const rowHeight = 76;
+  const svgHeight = goals.length * rowHeight;
+  let content = '';
+  goals.forEach((g, i) => {
+    const y0 = i * rowHeight;
+    content += `<text x="0" y="${y0 + 14}" font-family="Spectral, Georgia, serif" font-size="13" font-weight="600" fill="var(--ink)">${escapeXml(g.name)}</text>`;
+    PEOPLE.forEach((p, pi) => {
+      const prog = (g.progress && g.progress[p]) || { completed: 0, total: 0 };
+      const pct = prog.total > 0 ? Math.round((prog.completed / prog.total) * 100) : 0;
+      const barY = y0 + 24 + pi * 16;
+      const fillWidth = Math.min(pct, 100) * 2.6;
+      content += `<text x="0" y="${barY + 9}" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="600" fill="${COLORS[p]}">${p[0]}</text>`;
+      content += `<rect x="16" y="${barY}" width="260" height="10" rx="3" fill="var(--track)"></rect>`;
+      content += `<rect x="16" y="${barY}" width="${fillWidth}" height="10" rx="3" fill="${COLORS[p]}"></rect>`;
+      content += `<text x="284" y="${barY + 9}" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--muted)">${pct}%</text>`;
+    });
+  });
+  return `<svg viewBox="0 0 330 ${svgHeight}" width="100%" style="max-width:100%; height:auto; display:block;">${content}</svg>`;
+}
+
 function renderGoalTracker() {
+  renderGoalCategoryDatalist();
   const goals = getGoals();
   const active = goals.filter(g => !g.archived);
   const archived = goals.filter(g => g.archived);
 
+  const chartWrap = document.getElementById('goal-chart');
+  if (chartWrap) chartWrap.innerHTML = buildGoalChartSVG(active);
+
   const activeWrap = document.getElementById('goal-list');
-  if (activeWrap) {
-    activeWrap.innerHTML = '';
-    if (active.length === 0) {
-      activeWrap.innerHTML = '<div class="empty-state">No goals yet — add one above, e.g. "Audit 2026".</div>';
-    } else {
-      active.forEach(g => activeWrap.appendChild(buildGoalCard(g, false)));
-    }
-  }
+  if (activeWrap) renderGoalCategoryGroups(activeWrap, active, false);
 
   const archivedToggleBtn = document.getElementById('toggle-archived-goals-btn');
   const archivedWrap = document.getElementById('archived-goal-list');
   if (archivedToggleBtn) archivedToggleBtn.textContent = showArchivedGoals ? 'Hide archived goals' : `Show archived goals (${archived.length})`;
   if (archivedWrap) {
     archivedWrap.style.display = showArchivedGoals ? 'block' : 'none';
-    archivedWrap.innerHTML = '';
-    if (showArchivedGoals) {
-      if (archived.length === 0) {
-        archivedWrap.innerHTML = '<div class="empty-state">Nothing archived yet.</div>';
-      } else {
-        archived.forEach(g => archivedWrap.appendChild(buildGoalCard(g, true)));
-      }
-    }
+    if (showArchivedGoals) renderGoalCategoryGroups(archivedWrap, archived, true);
   }
 }
 document.getElementById('toggle-archived-goals-btn').onclick = () => {
   showArchivedGoals = !showArchivedGoals;
   renderGoalTracker();
 };
+document.getElementById('goal-expand-all-btn').onclick = () => {
+  collapsedGoalCategories.clear();
+  renderGoalTracker();
+};
+document.getElementById('goal-collapse-all-btn').onclick = () => {
+  collapsedGoalCategories = new Set(getGoalCategoriesList());
+  renderGoalTracker();
+};
 document.getElementById('add-goal-btn').onclick = async () => {
+  const categoryInput = document.getElementById('goal-category-input');
+  const modeInput = document.getElementById('goal-mode-input');
+  const unitInput = document.getElementById('goal-unit-input');
   const input = document.getElementById('goal-name-input');
+  const category = categoryInput.value.trim() || 'General';
+  const mode = modeInput.value;
+  const unit = unitInput.value.trim();
   const name = input.value.trim();
   if (!name) { alert('Give the goal a name.'); return; }
-  const goal = { id: `g-${Date.now()}`, name, date: todayISO(), archived: false, progress: blankGoalProgress() };
+  const goal = { id: `g-${Date.now()}`, name, category, mode, unit, date: todayISO(), archived: false, progress: blankGoalProgress() };
   const updated = [...getGoals(), goal];
   await saveGoals(updated);
+  categoryInput.value = '';
+  unitInput.value = '';
   input.value = '';
   renderGoalTracker();
 };

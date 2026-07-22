@@ -693,6 +693,25 @@
     font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
     margin-left: auto; flex-shrink: 0;
   }
+  .goal-chart-card {
+    padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line);
+  }
+  .goal-chart-card:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .goal-chart-title {
+    font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 14px; margin-bottom: 10px;
+  }
+  .goal-chart-donuts { display: flex; gap: 18px; flex-wrap: wrap; }
+  .goal-chart-donut-item {
+    text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 11px; width: 64px;
+  }
+  .roulette-spinning {
+    font-family: 'Spectral', Georgia, serif; font-weight: 700; font-size: 32px;
+    text-align: center; padding: 18px 0; transition: color 0.1s ease;
+  }
+  .roulette-caption {
+    text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    color: var(--muted); margin-top: 4px;
+  }
 </style>
 </head>
 <body>
@@ -723,6 +742,7 @@
     <div class="main-tab" id="tab-awards">Crew Awards</div>
     <div class="main-tab" id="tab-bets">🎯 Wager Board</div>
     <div class="main-tab" id="tab-patchnotes">📋 Patch Notes</div>
+    <div class="main-tab" id="tab-support">🎫 Support</div>
     <div class="main-tab" id="tab-vault">🔒 Vault</div>
   </div>
 
@@ -1098,6 +1118,82 @@
     </section>
   </div>
 
+  <!-- ===================== SUPPORT (tickets + suggestions) ===================== -->
+  <div class="view" id="view-support">
+
+    <section class="panel">
+      <div class="leader-header-row">
+        <div class="panel-label">🎫 TICKET LOG</div>
+        <button class="archive-btn" id="ticket-log-toggle-btn">Show</button>
+      </div>
+      <div class="panel-sub">Hit a problem and figured it out? Log it here — question stays visible, tap it to reveal how it got solved.</div>
+      <div id="ticket-log-content" style="display:none;">
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Category</label>
+            <input type="text" id="ticket-category-input" list="ticket-category-datalist" placeholder="e.g. Login issues" />
+            <datalist id="ticket-category-datalist"></datalist>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Who</label>
+            <select id="ticket-person-input">
+              <option value="Luigi">Luigi</option>
+              <option value="Juan">Juan</option>
+              <option value="Sergio">Sergio</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">The issue</label>
+            <input type="text" id="ticket-issue-input" placeholder="e.g. Clock-in button froze on Sergio's phone" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">How it was solved</label>
+            <textarea id="ticket-resolution-input" rows="3" placeholder="What fixed it" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="add-btn" id="add-ticket-btn">Log ticket</button>
+          <button class="archive-btn" id="cancel-ticket-edit-btn" style="display:none;">Cancel edit</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:16px;">
+          <button class="archive-btn" id="ticket-expand-all-btn">Expand all</button>
+          <button class="archive-btn" id="ticket-collapse-all-btn">Collapse all</button>
+        </div>
+        <div id="ticket-list" style="margin-top:10px;"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">💡 SUGGESTION BOX</div>
+      <div class="panel-sub">Got an idea for a new feature? Drop it here — nobody has to wonder if it got lost in a group chat.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Who</label>
+          <select id="suggestion-person-input">
+            <option value="Luigi">Luigi</option>
+            <option value="Juan">Juan</option>
+            <option value="Sergio">Sergio</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="flex: 1 1 100%;">
+          <label class="form-label">Suggestion</label>
+          <textarea id="suggestion-text-input" rows="2" placeholder="e.g. Add a dark mode" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+        </div>
+      </div>
+      <button class="add-btn" id="add-suggestion-btn">Add suggestion</button>
+      <div id="suggestion-list" style="margin-top:16px;"></div>
+      <button class="archive-btn" id="toggle-done-suggestions-btn" style="margin-top:10px;">Show done suggestions</button>
+      <div id="done-suggestion-list" style="margin-top:12px; display:none;"></div>
+    </section>
+
+  </div>
+
   <!-- ===================== VAULT (password-gated, WIP) ===================== -->
   <div class="view" id="view-vault">
 
@@ -1117,74 +1213,16 @@
     <div id="vault-unlocked" style="display:none;">
 
       <section class="panel">
-        <div class="leader-header-row">
-          <div class="panel-label">🎫 TICKET LOG</div>
-          <button class="archive-btn" id="ticket-log-toggle-btn">Show</button>
-        </div>
-        <div class="panel-sub">Hit a problem and figured it out? Log it here — question stays visible, tap it to reveal how it got solved.</div>
-        <div id="ticket-log-content" style="display:none;">
-          <div class="form-row">
-            <div class="form-field">
-              <label class="form-label">Category</label>
-              <input type="text" id="ticket-category-input" list="ticket-category-datalist" placeholder="e.g. Login issues" />
-              <datalist id="ticket-category-datalist"></datalist>
-            </div>
-            <div class="form-field">
-              <label class="form-label">Who</label>
-              <select id="ticket-person-input">
-                <option value="Luigi">Luigi</option>
-                <option value="Juan">Juan</option>
-                <option value="Sergio">Sergio</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-field" style="flex: 1 1 100%;">
-              <label class="form-label">The issue</label>
-              <input type="text" id="ticket-issue-input" placeholder="e.g. Clock-in button froze on Sergio's phone" />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-field" style="flex: 1 1 100%;">
-              <label class="form-label">How it was solved</label>
-              <textarea id="ticket-resolution-input" rows="3" placeholder="What fixed it" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
-            </div>
-          </div>
-          <div style="display:flex; gap:10px; align-items:center;">
-            <button class="add-btn" id="add-ticket-btn">Log ticket</button>
-            <button class="archive-btn" id="cancel-ticket-edit-btn" style="display:none;">Cancel edit</button>
-          </div>
-          <div style="display:flex; gap:8px; margin-top:16px;">
-            <button class="archive-btn" id="ticket-expand-all-btn">Expand all</button>
-            <button class="archive-btn" id="ticket-collapse-all-btn">Collapse all</button>
-          </div>
-          <div id="ticket-list" style="margin-top:10px;"></div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-label">💡 SUGGESTION BOX</div>
-        <div class="panel-sub">Got an idea for a new feature? Drop it here — nobody has to wonder if it got lost in a group chat.</div>
-        <div class="form-row">
-          <div class="form-field">
-            <label class="form-label">Who</label>
-            <select id="suggestion-person-input">
-              <option value="Luigi">Luigi</option>
-              <option value="Juan">Juan</option>
-              <option value="Sergio">Sergio</option>
-            </select>
-          </div>
-        </div>
+        <div class="panel-label">🧪 ALPHA: DECISION ROULETTE</div>
+        <div class="panel-sub">Experimental — nothing here is saved yet, this is just a quick spin. Type a decision, hit spin, one of you gets picked.</div>
         <div class="form-row">
           <div class="form-field" style="flex: 1 1 100%;">
-            <label class="form-label">Suggestion</label>
-            <textarea id="suggestion-text-input" rows="2" placeholder="e.g. Add a dark mode" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+            <label class="form-label">What's the decision?</label>
+            <input type="text" id="roulette-question-input" placeholder="e.g. Who takes out the trash tonight" />
           </div>
         </div>
-        <button class="add-btn" id="add-suggestion-btn">Add suggestion</button>
-        <div id="suggestion-list" style="margin-top:16px;"></div>
-        <button class="archive-btn" id="toggle-done-suggestions-btn" style="margin-top:10px;">Show done suggestions</button>
-        <div id="done-suggestion-list" style="margin-top:12px; display:none;"></div>
+        <button class="add-btn" id="roulette-spin-btn">Spin</button>
+        <div id="roulette-result" style="margin-top:16px;"></div>
       </section>
 
     </div>
@@ -1218,7 +1256,7 @@
     <div class="egg-drawer-title">Secrets</div>
     <button class="egg-drawer-close" id="egg-drawer-close">✕</button>
   </div>
-  <div class="egg-drawer-sub">6 hidden somewhere in the app. Dots show who on the crew has found each one — no mechanism given away unless you tap Hint.</div>
+  <div class="egg-drawer-sub">8 hidden somewhere in the app. Dots show who on the crew has found each one — no mechanism given away unless you tap Hint.</div>
   <div id="egg-drawer-list"></div>
 </div>
 
@@ -1724,6 +1762,7 @@ async function loadData() {
   renderAwardsTab();
   renderBetsTab();
   renderPatchNotes();
+  renderSupportTab();
   renderCrewPulse();
   renderEggDrawer();
 }
@@ -3248,6 +3287,7 @@ document.getElementById('tab-mood').onclick = () => switchMainTab('mood');
 document.getElementById('tab-awards').onclick = () => switchMainTab('awards');
 document.getElementById('tab-bets').onclick = () => switchMainTab('bets');
 document.getElementById('tab-patchnotes').onclick = () => switchMainTab('patchnotes');
+document.getElementById('tab-support').onclick = () => switchMainTab('support');
 document.getElementById('tab-vault').onclick = () => switchMainTab('vault');
 function switchMainTab(which) {
   document.getElementById('tab-time').classList.toggle('active', which === 'time');
@@ -3255,18 +3295,21 @@ function switchMainTab(which) {
   document.getElementById('tab-awards').classList.toggle('active', which === 'awards');
   document.getElementById('tab-bets').classList.toggle('active', which === 'bets');
   document.getElementById('tab-patchnotes').classList.toggle('active', which === 'patchnotes');
+  document.getElementById('tab-support').classList.toggle('active', which === 'support');
   document.getElementById('tab-vault').classList.toggle('active', which === 'vault');
   document.getElementById('view-time').classList.toggle('active', which === 'time');
   document.getElementById('view-mood').classList.toggle('active', which === 'mood');
   document.getElementById('view-awards').classList.toggle('active', which === 'awards');
   document.getElementById('view-bets').classList.toggle('active', which === 'bets');
   document.getElementById('view-patchnotes').classList.toggle('active', which === 'patchnotes');
+  document.getElementById('view-support').classList.toggle('active', which === 'support');
   document.getElementById('view-vault').classList.toggle('active', which === 'vault');
   if (which === 'time') renderTimeTab();
   if (which === 'mood') renderMoodTab();
   if (which === 'awards') renderAwardsTab();
   if (which === 'bets') renderBetsTab();
   if (which === 'patchnotes') renderPatchNotes();
+  if (which === 'support') renderSupportTab();
   if (which === 'vault') renderVaultTab();
 }
 
@@ -3280,10 +3323,10 @@ function renderVaultTab() {
   const unlocked = sessionStorage.getItem(VAULT_UNLOCK_KEY) === 'true';
   document.getElementById('vault-locked').style.display = unlocked ? 'none' : 'block';
   document.getElementById('vault-unlocked').style.display = unlocked ? 'block' : 'none';
-  if (unlocked) {
-    renderTickets();
-    renderSuggestions();
-  }
+}
+function renderSupportTab() {
+  renderTickets();
+  renderSuggestions();
 }
 function attemptVaultUnlock() {
   const input = document.getElementById('vault-password-input');
@@ -3809,6 +3852,39 @@ document.getElementById('add-suggestion-btn').onclick = async () => {
 };
 
 /* =========================================================================
+   🧪 ALPHA: DECISION ROULETTE — pure client-side fun, nothing persisted
+   yet. Spins through names then lands on one at random. Marked alpha
+   on purpose since it's intentionally lightweight for now.
+   ========================================================================= */
+function spinRoulette() {
+  const questionInput = document.getElementById('roulette-question-input');
+  const question = questionInput.value.trim();
+  const resultEl = document.getElementById('roulette-result');
+  const finalPick = PEOPLE[Math.floor(Math.random() * PEOPLE.length)];
+
+  resultEl.innerHTML = `<div class="roulette-spinning" id="roulette-spinning">—</div><div class="roulette-caption" id="roulette-caption"></div>`;
+  const spinEl = document.getElementById('roulette-spinning');
+  const captionEl = document.getElementById('roulette-caption');
+
+  let ticks = 0;
+  const maxTicks = 14 + Math.floor(Math.random() * 6);
+  const spinInterval = setInterval(() => {
+    const p = PEOPLE[ticks % PEOPLE.length];
+    spinEl.textContent = p;
+    spinEl.style.color = COLORS[p];
+    ticks++;
+    if (ticks >= maxTicks) {
+      clearInterval(spinInterval);
+      spinEl.textContent = finalPick;
+      spinEl.style.color = COLORS[finalPick];
+      captionEl.textContent = question ? `"${question}" → ${finalPick}` : `${finalPick} it is.`;
+      spawnConfetti();
+    }
+  }, 90);
+}
+document.getElementById('roulette-spin-btn').onclick = spinRoulette;
+
+/* =========================================================================
    GOAL TRACKER — shared progress trackers like "Audit 2026". Each
    person logs their own current/target; percentage is computed.
    Same settings-based storage as everything else, and the same
@@ -4019,26 +4095,64 @@ function renderGoalCategoryGroups(wrap, goalsList, isArchived) {
   });
 }
 
-function buildGoalChartSVG(goals) {
-  if (goals.length === 0) return '<div class="empty-state">No active goals to chart yet.</div>';
-  const rowHeight = 76;
-  const svgHeight = goals.length * rowHeight;
-  let content = '';
-  goals.forEach((g, i) => {
-    const y0 = i * rowHeight;
-    content += `<text x="0" y="${y0 + 14}" font-family="Spectral, Georgia, serif" font-size="13" font-weight="600" fill="var(--ink)">${escapeXml(g.name)}</text>`;
-    PEOPLE.forEach((p, pi) => {
-      const prog = (g.progress && g.progress[p]) || { completed: 0, total: 0 };
-      const pct = prog.total > 0 ? Math.round((prog.completed / prog.total) * 100) : 0;
-      const barY = y0 + 24 + pi * 16;
-      const fillWidth = Math.min(pct, 100) * 2.6;
-      content += `<text x="0" y="${barY + 9}" font-family="IBM Plex Mono, monospace" font-size="10" font-weight="600" fill="${COLORS[p]}">${p[0]}</text>`;
-      content += `<rect x="16" y="${barY}" width="260" height="10" rx="3" fill="var(--track)"></rect>`;
-      content += `<rect x="16" y="${barY}" width="${fillWidth}" height="10" rx="3" fill="${COLORS[p]}"></rect>`;
-      content += `<text x="284" y="${barY + 9}" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--muted)">${pct}%</text>`;
-    });
+function buildDonutSVG(pct, color) {
+  const size = 64, r = 24, stroke = 7, cx = 32, cy = 32;
+  const clamped = Math.max(0, Math.min(pct, 100));
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - clamped / 100);
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--track)" stroke-width="${stroke}"></circle>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"
+      stroke-dasharray="${circumference.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"
+      transform="rotate(-90 ${cx} ${cy})"></circle>
+    <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="700" fill="var(--ink)">${Math.round(pct)}%</text>
+  </svg>`;
+}
+
+function buildRaceTrackSVG(g) {
+  const trackX1 = 16, trackX2 = 258, svgWidth = 330;
+  let lanes = '';
+  PEOPLE.forEach((p, i) => {
+    const prog = (g.progress && g.progress[p]) || { completed: 0, total: 0 };
+    const pct = prog.total > 0 ? Math.min(100, (prog.completed / prog.total) * 100) : 0;
+    const laneY = 20 + i * 30;
+    const x = trackX1 + (pct / 100) * (trackX2 - trackX1);
+    const valueText = `${prog.completed}${g.unit ? ' ' + g.unit : ''} / ${prog.total}${g.unit ? ' ' + g.unit : ''}`;
+    lanes += `
+      <line x1="${trackX1}" y1="${laneY}" x2="${trackX2}" y2="${laneY}" stroke="var(--track)" stroke-width="5" stroke-linecap="round"></line>
+      <line x1="${trackX1}" y1="${laneY}" x2="${x}" y2="${laneY}" stroke="${COLORS[p]}" stroke-width="5" stroke-linecap="round"></line>
+      <circle cx="${x}" cy="${laneY}" r="7" fill="${COLORS[p]}" stroke="#fff" stroke-width="1.5"></circle>
+      <text x="0" y="${laneY + 4}" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="700" fill="${COLORS[p]}">${escapeXml(p[0])}</text>
+      <text x="${trackX2 + 8}" y="${laneY + 4}" font-family="'IBM Plex Mono', monospace" font-size="10" fill="var(--muted)">${escapeXml(valueText)} · ${Math.round(pct)}%</text>
+    `;
   });
-  return `<svg viewBox="0 0 330 ${svgHeight}" width="100%" style="max-width:100%; height:auto; display:block;">${content}</svg>`;
+  const svgHeight = 20 + PEOPLE.length * 30;
+  return `<svg viewBox="0 0 ${svgWidth} ${svgHeight}" width="100%" style="max-width:100%; height:auto; display:block;">
+    <text x="${trackX2 - 6}" y="10" text-anchor="end" font-size="13">🏁</text>
+    ${lanes}
+  </svg>`;
+}
+
+function buildGoalChartCard(g) {
+  const mode = g.mode || 'completion';
+  let inner;
+  if (mode === 'target') {
+    inner = buildRaceTrackSVG(g);
+  } else {
+    inner = `<div class="goal-chart-donuts">` + PEOPLE.map(p => {
+      const prog = (g.progress && g.progress[p]) || { completed: 0, total: 0 };
+      const pct = prog.total > 0 ? (prog.completed / prog.total) * 100 : 0;
+      return `<div class="goal-chart-donut-item">
+        ${buildDonutSVG(pct, COLORS[p])}
+        <div style="margin-top:4px; font-weight:600; color:${COLORS[p]};">${escapeXml(p)}</div>
+        <div style="color:var(--faint);">${prog.completed}/${prog.total}</div>
+      </div>`;
+    }).join('') + `</div>`;
+  }
+  return `<div class="goal-chart-card">
+    <div class="goal-chart-title">${escapeXml(g.name)}${mode === 'target' ? ' <span style="font-size:10px; font-weight:400; color:var(--faint); font-family:\'IBM Plex Mono\',monospace;">(target)</span>' : ''}</div>
+    ${inner}
+  </div>`;
 }
 
 function renderGoalTracker() {
@@ -4048,7 +4162,11 @@ function renderGoalTracker() {
   const archived = goals.filter(g => g.archived);
 
   const chartWrap = document.getElementById('goal-chart');
-  if (chartWrap) chartWrap.innerHTML = buildGoalChartSVG(active);
+  if (chartWrap) {
+    chartWrap.innerHTML = active.length === 0
+      ? '<div class="empty-state">No active goals to chart yet.</div>'
+      : active.map(g => buildGoalChartCard(g)).join('');
+  }
 
   const activeWrap = document.getElementById('goal-list');
   if (activeWrap) renderGoalCategoryGroups(activeWrap, active, false);

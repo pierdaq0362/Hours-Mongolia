@@ -156,7 +156,7 @@
     align-items: center;
     margin-bottom: 4px;
   }
-  .toggle-group { display: flex; gap: 14px; }
+  .toggle-group { display: flex; gap: 14px; flex-wrap: wrap; row-gap: 6px; }
   .toggle-btn {
     background: none;
     border: none;
@@ -822,6 +822,8 @@
         <div class="panel-label">LEADERBOARD</div>
         <div class="toggle-group">
           <button class="toggle-btn active" id="toggle-lifetime">Lifetime</button>
+          <button class="toggle-btn" id="toggle-month">This month</button>
+          <button class="toggle-btn" id="toggle-ytd">Year to date</button>
           <button class="toggle-btn" id="toggle-average">Daily average</button>
         </div>
       </div>
@@ -1016,7 +1018,14 @@
     </section>
 
     <section class="panel">
-      <div class="panel-label">WEEKLY RECAP</div>
+      <div class="leader-header-row">
+        <div class="panel-label">RECAP</div>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="toggle-recap-week">This week</button>
+          <button class="toggle-btn" id="toggle-recap-month">This month</button>
+          <button class="toggle-btn" id="toggle-recap-ytd">Year to date</button>
+        </div>
+      </div>
       <div class="panel-sub" id="recap-range">Last 7 days</div>
       <div class="recap-grid" id="recap-grid"></div>
     </section>
@@ -1030,7 +1039,10 @@
     </section>
 
     <section class="panel">
-      <div class="panel-label">RANDOM ANIMAL</div>
+      <div class="leader-header-row">
+        <div class="panel-label">RANDOM ANIMAL</div>
+        <button class="archive-btn" id="animal-pic-retry-btn">🔄 New photo</button>
+      </div>
       <div class="animal-pic-wrap" id="animal-pic-wrap">
         <span class="empty-state">loading photo…</span>
       </div>
@@ -1053,25 +1065,41 @@
     </section>
 
     <section class="panel">
-      <div class="panel-label">ADD A MATCH</div>
-      <div class="panel-sub">For the semis, final, or anything else worth a bet.</div>
-      <div class="form-row">
-        <div class="form-field">
-          <label class="form-label">Team A</label>
-          <input type="text" id="new-match-teamA" placeholder="e.g. France" />
-        </div>
-        <div class="form-field">
-          <label class="form-label">Team B</label>
-          <input type="text" id="new-match-teamB" placeholder="e.g. Morocco" />
+      <div class="leader-header-row">
+        <div class="panel-label" id="add-bet-label">ADD A MATCH</div>
+        <button class="archive-btn" id="bet-type-toggle-btn">📝 Switch to custom bet</button>
+      </div>
+      <div class="panel-sub" id="add-bet-sub">For the semis, final, or anything else worth a bet.</div>
+
+      <div id="football-add-fields">
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Team A</label>
+            <input type="text" id="new-match-teamA" placeholder="e.g. France" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">Team B</label>
+            <input type="text" id="new-match-teamB" placeholder="e.g. Morocco" />
+          </div>
         </div>
       </div>
+
+      <div id="custom-add-fields" style="display:none;">
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">Question</label>
+            <input type="text" id="new-match-question" placeholder="e.g. How many wins will the Lakers get this month?" />
+          </div>
+        </div>
+      </div>
+
       <div class="form-row">
         <div class="form-field">
           <label class="form-label">Date / round</label>
           <input type="text" id="new-match-date" placeholder="e.g. Semifinal, Jul 15" />
         </div>
       </div>
-      <button class="add-btn" id="add-match-btn">Add match</button>
+      <button class="add-btn" id="add-match-btn">Add bet</button>
     </section>
 
     <div id="wc-winner-toggle-row" style="margin-bottom:16px;">
@@ -2107,9 +2135,16 @@ async function deleteEntry(id) {
   renderTimeTab();
   try { await apiDeleteEntry(id); } catch (e) { console.error('Failed to delete entry', e); }
 }
-function computeStats() {
+function computeStats(period) {
   return PEOPLE.map((person) => {
-    const personEntries = entries.filter((e) => e.person === person);
+    let personEntries = entries.filter((e) => e.person === person);
+    if (period === 'month' || period === 'ytd') {
+      const range = getOvertimeRange(period === 'month' ? 'thisMonth' : 'ytd', person);
+      personEntries = personEntries.filter((e) => {
+        const d = e.start.slice(0, 10);
+        return d >= range.start && d <= range.end;
+      });
+    }
     const totalHours = personEntries.reduce((sum, e) => sum + e.hours, 0);
     const days = new Set(personEntries.map((e) => e.start.slice(0, 10))).size;
     const avgHours = days > 0 ? totalHours / days : 0;
@@ -2194,9 +2229,10 @@ function renderPersonRow() {
   });
 }
 function renderLeaderboard() {
-  const stats = computeStats();
-  const sorted = [...stats].sort((a, b) => viewMode === 'lifetime' ? b.totalHours - a.totalHours : b.avgHours - a.avgHours);
-  const maxValue = Math.max(1, ...sorted.map((s) => (viewMode === 'lifetime' ? s.totalHours : s.avgHours)));
+  const statsPeriod = viewMode === 'month' ? 'month' : viewMode === 'ytd' ? 'ytd' : 'lifetime';
+  const stats = computeStats(statsPeriod);
+  const sorted = [...stats].sort((a, b) => viewMode === 'average' ? b.avgHours - a.avgHours : b.totalHours - a.totalHours);
+  const maxValue = Math.max(1, ...sorted.map((s) => (viewMode === 'average' ? s.avgHours : s.totalHours)));
   const container = document.getElementById('leaderboard');
   container.innerHTML = '';
   if (sorted.every((s) => s.shifts === 0)) {
@@ -2209,7 +2245,7 @@ function renderLeaderboard() {
   const list = document.createElement('div');
   list.className = 'leaderboard-list';
   sorted.forEach((s, idx) => {
-    const value = viewMode === 'lifetime' ? s.totalHours : s.avgHours;
+    const value = viewMode === 'average' ? s.avgHours : s.totalHours;
     const pct = (value / maxValue) * 100;
     const row = document.createElement('div');
     row.className = 'leader-row';
@@ -2551,18 +2587,17 @@ document.getElementById('add-holiday-btn').onclick = async () => {
   renderCalendar();
 };
 
-document.getElementById('toggle-lifetime').onclick = () => {
-  viewMode = 'lifetime';
-  document.getElementById('toggle-lifetime').classList.add('active');
-  document.getElementById('toggle-average').classList.remove('active');
+function setLeaderboardViewMode(mode) {
+  viewMode = mode;
+  ['lifetime', 'month', 'ytd', 'average'].forEach(m => {
+    document.getElementById(`toggle-${m}`).classList.toggle('active', m === mode);
+  });
   renderLeaderboard();
-};
-document.getElementById('toggle-average').onclick = () => {
-  viewMode = 'average';
-  document.getElementById('toggle-average').classList.add('active');
-  document.getElementById('toggle-lifetime').classList.remove('active');
-  renderLeaderboard();
-};
+}
+document.getElementById('toggle-lifetime').onclick = () => setLeaderboardViewMode('lifetime');
+document.getElementById('toggle-month').onclick = () => setLeaderboardViewMode('month');
+document.getElementById('toggle-ytd').onclick = () => setLeaderboardViewMode('ytd');
+document.getElementById('toggle-average').onclick = () => setLeaderboardViewMode('average');
 document.getElementById('add-shift-btn').onclick = addManualEntry;
 document.getElementById('manual-date').value = todayISO();
 setInterval(renderPersonRow, 30000);
@@ -2977,9 +3012,23 @@ function last7Dates() {
   }
   return days;
 }
-function computeWeeklyRecap() {
-  const days = last7Dates();
-  const dayLabel = (dateStr) => new Date(dateStr + 'T00:00:00').toLocaleDateString([], { weekday: 'long' });
+function getRecapDates(period) {
+  if (period === 'week') return last7Dates();
+  const now = new Date();
+  const start = period === 'month'
+    ? new Date(now.getFullYear(), now.getMonth(), 1)
+    : new Date(now.getFullYear(), 0, 1);
+  const days = [];
+  let d = new Date(start);
+  while (d <= now) {
+    days.push(d.toISOString().slice(0, 10));
+    d.setDate(d.getDate() + 1);
+  }
+  return days;
+}
+function computeWeeklyRecap(period) {
+  const days = getRecapDates(period || 'week');
+  const dayLabel = (dateStr) => new Date(dateStr + 'T00:00:00').toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
 
   // Busiest day: combined crew hours per day
   const hoursByDay = {};
@@ -3014,13 +3063,28 @@ function computeWeeklyRecap() {
     bestMoodAvg
   };
 }
+let recapPeriod = 'week';
+function setRecapPeriod(period) {
+  recapPeriod = period;
+  ['week', 'month', 'ytd'].forEach(p => {
+    document.getElementById(`toggle-recap-${p}`).classList.toggle('active', p === period);
+  });
+  renderWeeklyRecap();
+}
+document.getElementById('toggle-recap-week').onclick = () => setRecapPeriod('week');
+document.getElementById('toggle-recap-month').onclick = () => setRecapPeriod('month');
+document.getElementById('toggle-recap-ytd').onclick = () => setRecapPeriod('ytd');
+
 function renderWeeklyRecap() {
   const wrap = document.getElementById('recap-grid');
   const rangeEl = document.getElementById('recap-range');
-  const days = last7Dates();
-  rangeEl.textContent = `${formatDate(new Date(days[0]))} – ${formatDate(new Date(days[days.length - 1]))}`;
+  const days = getRecapDates(recapPeriod);
+  const rangeLabels = { week: 'Last 7 days', month: 'This month so far', ytd: 'Year to date' };
+  rangeEl.textContent = days.length
+    ? `${rangeLabels[recapPeriod]} · ${formatDate(new Date(days[0]))} – ${formatDate(new Date(days[days.length - 1]))}`
+    : rangeLabels[recapPeriod];
 
-  const r = computeWeeklyRecap();
+  const r = computeWeeklyRecap(recapPeriod);
   wrap.innerHTML = '';
 
   const busyItem = document.createElement('div');
@@ -3096,25 +3160,26 @@ function renderFactOfDay() {
    calendar day via localStorage so the whole crew sees the same one.
    --------------------------------------------------------------------- */
 const ANIMAL_PIC_KEY = 'punchboard-animal-pic';
-const animalPicSources = [
-  () => `https://placedog.net/640/360?random=${Date.now()}`,
-  () => `https://placebear.com/640/360?${Date.now()}`,
-];
-function renderAnimalPic() {
+const ANIMAL_KEYWORDS = ['dog', 'cat', 'fox', 'panda', 'koala', 'owl', 'elephant', 'penguin', 'otter', 'hedgehog', 'rabbit', 'giraffe', 'wolf', 'seal', 'raccoon'];
+function pickAnimalUrl() {
+  const keyword = ANIMAL_KEYWORDS[Math.floor(Math.random() * ANIMAL_KEYWORDS.length)];
+  return `https://loremflickr.com/640/360/${keyword}?random=${Date.now()}`;
+}
+function renderAnimalPic(forceNew) {
   const wrap = document.getElementById('animal-pic-wrap');
   const today = todayISO();
   let stored = null;
   try { stored = JSON.parse(localStorage.getItem(ANIMAL_PIC_KEY) || 'null'); } catch (e) {}
   let url;
-  if (stored && stored.date === today) {
+  if (!forceNew && stored && stored.date === today) {
     url = stored.url;
   } else {
-    const gen = animalPicSources[Math.floor(Math.random() * animalPicSources.length)];
-    url = gen();
+    url = pickAnimalUrl();
     localStorage.setItem(ANIMAL_PIC_KEY, JSON.stringify({ date: today, url }));
   }
-  wrap.innerHTML = `<img src="${url}" alt="random animal" onerror="this.parentElement.innerHTML='<span class=&quot;empty-state&quot;>couldn\\'t load photo right now</span>'">`;
+  wrap.innerHTML = `<img src="${url}" alt="random animal" onerror="this.parentElement.innerHTML='<span class=&quot;empty-state&quot;>couldn\\'t load a photo — tap 🔄 New photo above to retry</span>'">`;
 }
+document.getElementById('animal-pic-retry-btn').onclick = () => renderAnimalPic(true);
 
 /* ---------------------------------------------------------------------
    Crew Pulse — one-line-per-person banner, computed live from this
@@ -3193,10 +3258,10 @@ function computeBeerStandings() {
   const totals = {};
   PEOPLE.forEach(p => { totals[p] = Number(settings[`baseBeers_${p}`] || 0); });
   matches.forEach(m => {
-    if (m.resultA === null || m.resultA === undefined || m.resultB === null || m.resultB === undefined) return;
+    if (!isMatchSettled(m)) return;
     PEOPLE.forEach(p => {
       const pred = findPrediction(m.id, p);
-      if (pred && pred.scoreA === m.resultA && pred.scoreB === m.resultB) {
+      if (isWinningPrediction(m, pred)) {
         totals[p] = (totals[p] || 0) + 1;
       }
     });
@@ -3245,11 +3310,26 @@ function renderBetsScoreboard() {
     wrap.appendChild(row);
   });
 }
+function isCustomBet(m) { return !m.teamB; }
+function isMatchSettled(m) {
+  if (isCustomBet(m)) return m.resultA !== null && m.resultA !== undefined && m.resultA !== '';
+  return m.resultA !== null && m.resultA !== undefined && m.resultB !== null && m.resultB !== undefined;
+}
+function isWinningPrediction(m, pred) {
+  if (!pred) return false;
+  if (isCustomBet(m)) {
+    if (m.resultA === null || m.resultA === undefined || m.resultA === '') return false;
+    return String(pred.scoreA).trim().toLowerCase() === String(m.resultA).trim().toLowerCase();
+  }
+  return pred.scoreA === m.resultA && pred.scoreB === m.resultB;
+}
+
 function renderMatchList() {
   const wrap = document.getElementById('match-list');
   wrap.innerHTML = '';
   matches.forEach(m => {
-    const settled = m.resultA !== null && m.resultA !== undefined && m.resultB !== null && m.resultB !== undefined;
+    const custom = isCustomBet(m);
+    const settled = isMatchSettled(m);
     const card = document.createElement('div');
     card.className = 'match-card' + (settled ? ' settled' : '');
 
@@ -3257,7 +3337,7 @@ function renderMatchList() {
     top.className = 'match-top';
     const teams = document.createElement('div');
     teams.className = 'match-teams';
-    teams.textContent = `${m.teamA} vs ${m.teamB}`;
+    teams.textContent = custom ? m.teamA : `${m.teamA} vs ${m.teamB}`;
     top.appendChild(teams);
     card.appendChild(top);
 
@@ -3278,41 +3358,61 @@ function renderMatchList() {
       row.appendChild(name);
 
       const pred = findPrediction(m.id, p);
-      let localA = pred ? pred.scoreA : null;
-      let localB = pred ? pred.scoreB : null;
 
-      const inputA = document.createElement('input');
-      inputA.type = 'number'; inputA.min = '0'; inputA.className = 'score-input';
-      inputA.value = localA === null ? '' : localA;
-      inputA.disabled = settled;
-      inputA.onchange = async () => {
-        localA = inputA.value === '' ? null : parseInt(inputA.value);
-        updateLocalPrediction(m.id, p, localA, localB);
-        if (localA === null || localB === null) return;
-        try { await apiSetPrediction(m.id, p, localA, localB); } catch (e) { console.error(e); }
-        renderBetsScoreboard();
-      };
-      row.appendChild(inputA);
+      if (custom) {
+        let localAnswer = pred ? pred.scoreA : null;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'score-input';
+        input.style.width = '120px';
+        input.placeholder = 'answer';
+        input.value = localAnswer === null || localAnswer === undefined ? '' : localAnswer;
+        input.disabled = settled;
+        input.onchange = async () => {
+          localAnswer = input.value.trim() === '' ? null : input.value.trim();
+          updateLocalPrediction(m.id, p, localAnswer, null);
+          if (localAnswer === null) return;
+          try { await apiSetPrediction(m.id, p, localAnswer, ''); } catch (e) { console.error(e); }
+          renderBetsScoreboard();
+        };
+        row.appendChild(input);
+      } else {
+        let localA = pred ? pred.scoreA : null;
+        let localB = pred ? pred.scoreB : null;
 
-      const sep = document.createElement('span');
-      sep.className = 'score-sep';
-      sep.textContent = '–';
-      row.appendChild(sep);
+        const inputA = document.createElement('input');
+        inputA.type = 'number'; inputA.min = '0'; inputA.className = 'score-input';
+        inputA.value = localA === null ? '' : localA;
+        inputA.disabled = settled;
+        inputA.onchange = async () => {
+          localA = inputA.value === '' ? null : parseInt(inputA.value);
+          updateLocalPrediction(m.id, p, localA, localB);
+          if (localA === null || localB === null) return;
+          try { await apiSetPrediction(m.id, p, localA, localB); } catch (e) { console.error(e); }
+          renderBetsScoreboard();
+        };
+        row.appendChild(inputA);
 
-      const inputB = document.createElement('input');
-      inputB.type = 'number'; inputB.min = '0'; inputB.className = 'score-input';
-      inputB.value = localB === null ? '' : localB;
-      inputB.disabled = settled;
-      inputB.onchange = async () => {
-        localB = inputB.value === '' ? null : parseInt(inputB.value);
-        updateLocalPrediction(m.id, p, localA, localB);
-        if (localA === null || localB === null) return;
-        try { await apiSetPrediction(m.id, p, localA, localB); } catch (e) { console.error(e); }
-        renderBetsScoreboard();
-      };
-      row.appendChild(inputB);
+        const sep = document.createElement('span');
+        sep.className = 'score-sep';
+        sep.textContent = '–';
+        row.appendChild(sep);
 
-      if (settled && pred && pred.scoreA === m.resultA && pred.scoreB === m.resultB) {
+        const inputB = document.createElement('input');
+        inputB.type = 'number'; inputB.min = '0'; inputB.className = 'score-input';
+        inputB.value = localB === null ? '' : localB;
+        inputB.disabled = settled;
+        inputB.onchange = async () => {
+          localB = inputB.value === '' ? null : parseInt(inputB.value);
+          updateLocalPrediction(m.id, p, localA, localB);
+          if (localA === null || localB === null) return;
+          try { await apiSetPrediction(m.id, p, localA, localB); } catch (e) { console.error(e); }
+          renderBetsScoreboard();
+        };
+        row.appendChild(inputB);
+      }
+
+      if (settled && isWinningPrediction(m, pred)) {
         const badge = document.createElement('span');
         badge.className = 'predict-win-badge';
         badge.textContent = '🍺';
@@ -3326,7 +3426,7 @@ function renderMatchList() {
       const tag = document.createElement('div');
       tag.className = 'settled-tag';
       const scoreText = document.createElement('span');
-      scoreText.textContent = `Final score: ${m.teamA} ${m.resultA} – ${m.resultB} ${m.teamB}`;
+      scoreText.textContent = custom ? `Answer: ${m.resultA}` : `Final score: ${m.teamA} ${m.resultA} – ${m.resultB} ${m.teamB}`;
       tag.appendChild(scoreText);
       const archiveBtn = document.createElement('button');
       archiveBtn.className = 'archive-btn';
@@ -3340,30 +3440,49 @@ function renderMatchList() {
       resultRow.className = 'result-row';
       const label = document.createElement('span');
       label.className = 'result-label';
-      label.textContent = 'REAL RESULT';
+      label.textContent = custom ? 'ACTUAL ANSWER' : 'REAL RESULT';
       resultRow.appendChild(label);
-      const rInputA = document.createElement('input');
-      rInputA.type = 'number'; rInputA.min = '0'; rInputA.className = 'score-input';
-      resultRow.appendChild(rInputA);
-      const sep = document.createElement('span');
-      sep.className = 'score-sep';
-      sep.textContent = '–';
-      resultRow.appendChild(sep);
-      const rInputB = document.createElement('input');
-      rInputB.type = 'number'; rInputB.min = '0'; rInputB.className = 'score-input';
-      resultRow.appendChild(rInputB);
-      const saveBtn = document.createElement('button');
-      saveBtn.className = 'result-save-btn';
-      saveBtn.textContent = 'Save result';
-      saveBtn.onclick = async () => {
-        const a = rInputA.value, b = rInputB.value;
-        if (a === '' || b === '') { alert('Enter both scores first.'); return; }
-        m.resultA = parseInt(a); m.resultB = parseInt(b);
-        renderMatchList();
-        renderBetsScoreboard();
-        try { await apiSetMatchResult(m.id, m.resultA, m.resultB); } catch (e) { console.error(e); }
-      };
-      resultRow.appendChild(saveBtn);
+
+      if (custom) {
+        const rInput = document.createElement('input');
+        rInput.type = 'text'; rInput.className = 'score-input'; rInput.style.width = '120px'; rInput.placeholder = 'answer';
+        resultRow.appendChild(rInput);
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'result-save-btn';
+        saveBtn.textContent = 'Save result';
+        saveBtn.onclick = async () => {
+          const val = rInput.value.trim();
+          if (val === '') { alert('Enter the actual answer first.'); return; }
+          m.resultA = val; m.resultB = null;
+          renderMatchList();
+          renderBetsScoreboard();
+          try { await apiSetMatchResult(m.id, m.resultA, ''); } catch (e) { console.error(e); }
+        };
+        resultRow.appendChild(saveBtn);
+      } else {
+        const rInputA = document.createElement('input');
+        rInputA.type = 'number'; rInputA.min = '0'; rInputA.className = 'score-input';
+        resultRow.appendChild(rInputA);
+        const sep = document.createElement('span');
+        sep.className = 'score-sep';
+        sep.textContent = '–';
+        resultRow.appendChild(sep);
+        const rInputB = document.createElement('input');
+        rInputB.type = 'number'; rInputB.min = '0'; rInputB.className = 'score-input';
+        resultRow.appendChild(rInputB);
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'result-save-btn';
+        saveBtn.textContent = 'Save result';
+        saveBtn.onclick = async () => {
+          const a = rInputA.value, b = rInputB.value;
+          if (a === '' || b === '') { alert('Enter both scores first.'); return; }
+          m.resultA = parseInt(a); m.resultB = parseInt(b);
+          renderMatchList();
+          renderBetsScoreboard();
+          try { await apiSetMatchResult(m.id, m.resultA, m.resultB); } catch (e) { console.error(e); }
+        };
+        resultRow.appendChild(saveBtn);
+      }
       card.appendChild(resultRow);
 
       const removeBtn = document.createElement('button');
@@ -3393,13 +3512,13 @@ function updateLocalPrediction(matchId, person, scoreA, scoreB) {
 async function archiveMatch(matchId) {
   const m = matches.find(x => x.id === matchId);
   if (!m) return;
-  const settled = m.resultA !== null && m.resultA !== undefined && m.resultB !== null && m.resultB !== undefined;
-  if (!settled) { alert('Only settled wagers (with a real result entered) can be archived.'); return; }
-  if (!confirm(`Archive "${m.teamA} vs ${m.teamB}"? Any won beer rounds get locked in permanently, then it's removed from this list.`)) return;
+  if (!isMatchSettled(m)) { alert('Only settled wagers (with a real result entered) can be archived.'); return; }
+  const label = isCustomBet(m) ? m.teamA : `${m.teamA} vs ${m.teamB}`;
+  if (!confirm(`Archive "${label}"? Any won beer rounds get locked in permanently, then it's removed from this list.`)) return;
 
   for (const p of PEOPLE) {
     const pred = findPrediction(matchId, p);
-    if (pred && pred.scoreA === m.resultA && pred.scoreB === m.resultB) {
+    if (isWinningPrediction(m, pred)) {
       const updated = Number(settings[`baseBeers_${p}`] || 0) + 1;
       settings[`baseBeers_${p}`] = updated;
       try { await apiSetSetting(`baseBeers_${p}`, updated); } catch (e) { console.error('Failed to persist beer credit', e); }
@@ -3426,7 +3545,8 @@ async function archiveMatch(matchId) {
 async function removeMatch(matchId) {
   const m = matches.find(x => x.id === matchId);
   if (!m) return;
-  if (!confirm(`Remove "${m.teamA} vs ${m.teamB}"? It hasn't been settled yet.`)) return;
+  const label = isCustomBet(m) ? m.teamA : `${m.teamA} vs ${m.teamB}`;
+  if (!confirm(`Remove "${label}"? It hasn't been settled yet.`)) return;
 
   await addArchivedMatchId(matchId);
   matches = matches.filter(x => x.id !== matchId);
@@ -3437,16 +3557,39 @@ async function removeMatch(matchId) {
   try { await apiPost({ action: 'deleteMatch', matchId }); } catch (e) { /* not required for correctness */ }
 }
 
+let addBetType = 'football';
+function setAddBetType(type) {
+  addBetType = type;
+  const isCustom = type === 'custom';
+  document.getElementById('football-add-fields').style.display = isCustom ? 'none' : 'block';
+  document.getElementById('custom-add-fields').style.display = isCustom ? 'block' : 'none';
+  document.getElementById('add-bet-label').textContent = isCustom ? 'ADD A CUSTOM BET' : 'ADD A MATCH';
+  document.getElementById('add-bet-sub').textContent = isCustom
+    ? 'Not football — any question with a written or numeric answer. Settle it once the real answer is known.'
+    : 'For the semis, final, or anything else worth a bet.';
+  document.getElementById('bet-type-toggle-btn').textContent = isCustom ? '⚽ Switch to football bet' : '📝 Switch to custom bet';
+}
+document.getElementById('bet-type-toggle-btn').onclick = () => setAddBetType(addBetType === 'football' ? 'custom' : 'football');
+
 document.getElementById('add-match-btn').onclick = async () => {
-  const teamA = document.getElementById('new-match-teamA').value.trim();
-  const teamB = document.getElementById('new-match-teamB').value.trim();
-  const date = document.getElementById('new-match-date').value.trim();
-  if (!teamA || !teamB) { alert('Enter both team names.'); return; }
-  const match = { id: `m-${Date.now()}`, teamA, teamB, meta: date || 'Date TBD', resultA: null, resultB: null };
-  matches.push(match);
-  document.getElementById('new-match-teamA').value = '';
-  document.getElementById('new-match-teamB').value = '';
+  let match;
+  if (addBetType === 'custom') {
+    const question = document.getElementById('new-match-question').value.trim();
+    const date = document.getElementById('new-match-date').value.trim();
+    if (!question) { alert('Enter the question first.'); return; }
+    match = { id: `m-${Date.now()}`, teamA: question, teamB: '', meta: date || 'Date TBD', resultA: null, resultB: null };
+    document.getElementById('new-match-question').value = '';
+  } else {
+    const teamA = document.getElementById('new-match-teamA').value.trim();
+    const teamB = document.getElementById('new-match-teamB').value.trim();
+    const date = document.getElementById('new-match-date').value.trim();
+    if (!teamA || !teamB) { alert('Enter both team names.'); return; }
+    match = { id: `m-${Date.now()}`, teamA, teamB, meta: date || 'Date TBD', resultA: null, resultB: null };
+    document.getElementById('new-match-teamA').value = '';
+    document.getElementById('new-match-teamB').value = '';
+  }
   document.getElementById('new-match-date').value = '';
+  matches.push(match);
   renderMatchList();
   try { await apiAddMatch(match); } catch (e) { console.error(e); }
 };
@@ -4577,6 +4720,25 @@ function buildGoalCard(g, isArchived) {
     }
     rowTop.appendChild(inputsWrap);
 
+    if (mode === 'target') {
+      const deltaBadge = document.createElement('span');
+      deltaBadge.className = 'goal-progress-pct';
+      deltaBadge.style.color = 'var(--ink)';
+      if (prog.total <= 0) {
+        deltaBadge.textContent = '—';
+      } else if (delta > 0) {
+        deltaBadge.textContent = `+${delta}${unit} above`;
+      } else if (delta < 0) {
+        deltaBadge.textContent = `${delta}${unit} below`;
+      } else {
+        deltaBadge.textContent = 'on target';
+      }
+      rowTop.appendChild(deltaBadge);
+      row.appendChild(rowTop);
+      card.appendChild(row);
+      return;
+    }
+
     const pctEl = document.createElement('span');
     pctEl.className = 'goal-progress-pct';
     pctEl.style.color = pct >= 100 ? '#2E9B5C' : 'var(--muted)';
@@ -4592,19 +4754,6 @@ function buildGoalCard(g, isArchived) {
     fill.style.background = COLORS[p];
     track.appendChild(fill);
     row.appendChild(track);
-
-    if (prog.total > 0 && delta !== 0) {
-      const deltaEl = document.createElement('div');
-      deltaEl.style.cssText = 'font-family:"IBM Plex Mono",monospace; font-size:10px; margin-top:3px; text-align:right;';
-      if (delta > 0) {
-        deltaEl.style.color = '#2E9B5C';
-        deltaEl.textContent = `+${delta}${unit} over target`;
-      } else {
-        deltaEl.style.color = 'var(--faint)';
-        deltaEl.textContent = `${Math.abs(delta)}${unit} to go`;
-      }
-      row.appendChild(deltaEl);
-    }
 
     card.appendChild(row);
   });
@@ -4665,26 +4814,34 @@ function buildDonutSVG(pct, color) {
   </svg>`;
 }
 
-function buildRaceTrackSVG(g) {
-  const trackX1 = 16, trackX2 = 258, svgWidth = 330;
+function buildVarianceSVG(g) {
+  const width = 330, centerX = 165, halfWidth = 130, labelMargin = 8;
+  const deltas = PEOPLE.map(p => {
+    const prog = (g.progress && g.progress[p]) || { completed: 0, total: 0 };
+    return prog.completed - prog.total;
+  });
+  const maxAbsDelta = Math.max(1, ...deltas.map(d => Math.abs(d)));
+  const unit = g.unit ? ` ${g.unit}` : '';
+
   let lanes = '';
   PEOPLE.forEach((p, i) => {
-    const prog = (g.progress && g.progress[p]) || { completed: 0, total: 0 };
-    const pct = prog.total > 0 ? Math.min(100, (prog.completed / prog.total) * 100) : 0;
-    const laneY = 20 + i * 30;
-    const x = trackX1 + (pct / 100) * (trackX2 - trackX1);
-    const valueText = `${prog.completed}${g.unit ? ' ' + g.unit : ''} / ${prog.total}${g.unit ? ' ' + g.unit : ''}`;
+    const delta = deltas[i];
+    const laneY = 24 + i * 34;
+    const barLen = (Math.abs(delta) / maxAbsDelta) * halfWidth;
+    const barX = delta >= 0 ? centerX : centerX - barLen;
+    const labelText = delta === 0 ? 'on target' : `${delta > 0 ? '+' : ''}${delta}${unit}`;
+    const labelX = delta >= 0 ? centerX + barLen + labelMargin : centerX - barLen - labelMargin;
+    const labelAnchor = delta >= 0 ? 'start' : 'end';
     lanes += `
-      <line x1="${trackX1}" y1="${laneY}" x2="${trackX2}" y2="${laneY}" stroke="var(--track)" stroke-width="5" stroke-linecap="round"></line>
-      <line x1="${trackX1}" y1="${laneY}" x2="${x}" y2="${laneY}" stroke="${COLORS[p]}" stroke-width="5" stroke-linecap="round"></line>
-      <circle cx="${x}" cy="${laneY}" r="7" fill="${COLORS[p]}" stroke="#fff" stroke-width="1.5"></circle>
-      <text x="0" y="${laneY + 4}" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="700" fill="${COLORS[p]}">${escapeXml(p[0])}</text>
-      <text x="${trackX2 + 8}" y="${laneY + 4}" font-family="'IBM Plex Mono', monospace" font-size="10" fill="var(--muted)">${escapeXml(valueText)} · ${Math.round(pct)}%</text>
+      <text x="4" y="${laneY + 4}" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="700" fill="${COLORS[p]}">${escapeXml(p[0])}</text>
+      <rect x="${Math.min(barX, centerX)}" y="${laneY - 5}" width="${Math.max(barLen, 0.5)}" height="10" rx="3" fill="${COLORS[p]}"></rect>
+      <text x="${labelX}" y="${laneY + 4}" text-anchor="${labelAnchor}" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="600" fill="var(--muted)">${escapeXml(labelText)}</text>
     `;
   });
-  const svgHeight = 20 + PEOPLE.length * 30;
-  return `<svg viewBox="0 0 ${svgWidth} ${svgHeight}" width="100%" style="max-width:100%; height:auto; display:block;">
-    <text x="${trackX2 - 6}" y="10" text-anchor="end" font-size="13">🏁</text>
+  const svgHeight = 24 + PEOPLE.length * 34;
+  return `<svg viewBox="0 0 ${width} ${svgHeight}" width="100%" style="max-width:100%; height:auto; display:block;">
+    <line x1="${centerX}" y1="4" x2="${centerX}" y2="${svgHeight - 4}" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="3,3"></line>
+    <text x="${centerX}" y="12" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" fill="var(--faint)">target</text>
     ${lanes}
   </svg>`;
 }
@@ -4693,7 +4850,7 @@ function buildGoalChartCard(g) {
   const mode = g.mode || 'completion';
   let inner;
   if (mode === 'target') {
-    inner = buildRaceTrackSVG(g);
+    inner = buildVarianceSVG(g);
   } else {
     inner = `<div class="goal-chart-donuts">` + PEOPLE.map(p => {
       const prog = (g.progress && g.progress[p]) || { completed: 0, total: 0 };
@@ -4706,7 +4863,7 @@ function buildGoalChartCard(g) {
     }).join('') + `</div>`;
   }
   return `<div class="goal-chart-card">
-    <div class="goal-chart-title">${escapeXml(g.name)}${mode === 'target' ? ' <span style="font-size:10px; font-weight:400; color:var(--faint); font-family:\'IBM Plex Mono\',monospace;">(target)</span>' : ''}</div>
+    <div class="goal-chart-title">${escapeXml(g.name)}${mode === 'target' ? ' <span style="font-size:10px; font-weight:400; color:var(--faint); font-family:\'IBM Plex Mono\',monospace;">(variance from target)</span>' : ''}</div>
     ${inner}
   </div>`;
 }

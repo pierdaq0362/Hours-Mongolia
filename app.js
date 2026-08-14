@@ -1,4 +1,3 @@
-
 /* =========================================================================
    CONFIG — paste your Apps Script Web App URL below between the quotes.
    ========================================================================= */
@@ -366,6 +365,46 @@ function renderBirthdayDecorations() {
   }
 }
 
+/* ---------------------------------------------------------------------
+   Missing-days warning ribbons — posted from the developer page, read
+   here from shared settings (missingDaysAlert). Two fixed ribbons, one
+   on each edge, since they're meant to be hard to miss. Dismissing is
+   local-only (per device, via localStorage) — it doesn't clear the
+   shared alert, which only the developer page can turn off, so it'll
+   come back on next load until actually cleared there.
+   --------------------------------------------------------------------- */
+const MISSING_DAYS_DISMISS_KEY = 'punchboard-missingdays-dismissed';
+function getMissingDaysAlert() {
+  try { return JSON.parse(settings.missingDaysAlert || 'null'); } catch (e) { return null; }
+}
+function renderMissingDaysBanners() {
+  const alertData = getMissingDaysAlert();
+  const leftBtn = document.getElementById('missing-days-ribbon-left');
+  const rightBtn = document.getElementById('missing-days-ribbon-right');
+  if (!leftBtn || !rightBtn) return;
+
+  let dismissedFor = null;
+  try { dismissedFor = localStorage.getItem(MISSING_DAYS_DISMISS_KEY); } catch (e) {}
+
+  const shouldShow = alertData && alertData.active && dismissedFor !== `${alertData.person}:${alertData.days.join(',')}`;
+  if (!shouldShow) {
+    leftBtn.style.display = 'none';
+    rightBtn.style.display = 'none';
+    return;
+  }
+
+  const label = `⚠️ ${alertData.person} — ${alertData.days.length} day${alertData.days.length !== 1 ? 's' : ''} not recorded: ${alertData.days.join(', ')} (tap to dismiss)`;
+  [leftBtn, rightBtn].forEach(btn => {
+    btn.textContent = label;
+    btn.style.display = 'block';
+    btn.onclick = () => {
+      try { localStorage.setItem(MISSING_DAYS_DISMISS_KEY, `${alertData.person}:${alertData.days.join(',')}`); } catch (e) {}
+      leftBtn.style.display = 'none';
+      rightBtn.style.display = 'none';
+    };
+  });
+}
+
 function showEgg({ eyebrow, title, messages, shower, eggKey }) {
   if (shower === 'confetti') spawnConfetti();
   if (shower === 'beer') spawnEmojiShower(['🍺', '🍻']);
@@ -672,17 +711,12 @@ async function loadData() {
   } catch (e) {
     console.error('Failed to load data', e);
   }
-  renderTimeTab();
-  renderMoodTab();
-  // Awards and Bets render on tab activation (cheap enough to always keep fresh too)
-  renderAwardsTab();
-  renderBetsTab();
-  renderPatchNotes();
-  renderSupportTab();
+  renderTimeTab(); // default active tab on load — others render on demand via switchMainTab
   renderCrewPulse();
   renderEggDrawer();
   renderMasteryDecoration();
   renderBirthdayDecorations();
+  renderMissingDaysBanners();
 }
 
 /* =========================================================================

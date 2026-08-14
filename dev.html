@@ -74,6 +74,20 @@
   .status-note {
     font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint); margin-top: 10px;
   }
+  .pending-row {
+    border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
+  }
+  .pending-row:last-child { margin-bottom: 0; }
+  .pending-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .pending-name { font-family: 'Spectral', Georgia, serif; font-weight: 600; font-size: 14px; }
+  .pending-count { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #E0503C; font-weight: 700; }
+  .pending-count.clean { color: #2E9B5C; }
+  .pending-dates { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+  .small-btn {
+    border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink);
+    font-size: 12px; font-weight: 600; padding: 6px 12px; cursor: pointer; font-family: inherit;
+  }
+  .small-btn:hover { border-color: var(--faint); }
   .lock-screen { text-align: center; padding: 60px 0; }
   .lock-icon { font-size: 32px; margin-bottom: 12px; }
   .lock-title { font-family: 'Spectral', Georgia, serif; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
@@ -135,6 +149,20 @@
       <div class="status-note" id="birthday-status">Loading current state…</div>
     </section>
 
+    <section class="panel">
+      <div class="panel-label">📋 PENDING DAYS</div>
+      <div class="panel-sub">Weekdays this month with no clock-in logged. Holidays (per-person or "Everyone") don't count against anyone.</div>
+      <div id="pending-days-list">Loading…</div>
+      <button class="add-btn" id="pending-days-refresh-btn" style="margin-top:12px;">Refresh</button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">🚨 ACTIVE REMINDER BANNER</div>
+      <div class="panel-sub">Shown as two warning ribbons on the main app until cleared here (people can dismiss it locally, but it comes back for them next time unless it's cleared here).</div>
+      <div id="active-alert-status">Loading…</div>
+      <button class="add-btn" id="clear-alert-btn" style="margin-top:10px; display:none;">Clear active reminder</button>
+    </section>
+
     <a class="back-link" href="index.html">← back to the app</a>
   </div>
 
@@ -158,6 +186,8 @@ async function apiSetSetting(key, value) {
 }
 
 let settings = {};
+let entries = [];
+const PEOPLE = ['Luigi', 'Juan', 'Sergio'];
 
 function showDevContent() {
   document.getElementById('lock-screen').style.display = 'none';
@@ -182,6 +212,7 @@ async function loadCurrentState() {
   try {
     const data = await apiGetAll();
     settings = data.settings || {};
+    entries = data.entries || [];
     const isOn = settings.birthdayMode === 'true';
     document.getElementById('birthday-toggle-input').checked = isOn;
     if (settings.birthdayPerson) document.getElementById('birthday-person-input').value = settings.birthdayPerson;
@@ -192,6 +223,8 @@ async function loadCurrentState() {
     console.error('Failed to load settings', e);
     statusEl.textContent = "Couldn't load current state — check the connection, but you can still save below.";
   }
+  renderPendingDays();
+  renderActiveAlertStatus();
 }
 
 document.getElementById('birthday-save-btn').onclick = async () => {
@@ -207,6 +240,90 @@ document.getElementById('birthday-save-btn').onclick = async () => {
     console.error(e);
     statusEl.textContent = 'Failed to save — try again.';
   }
+};
+
+/* ---------------------------------------------------------------------
+   Pending days — weekdays this month with no logged entry, excluding
+   any date covered by a holiday (per-person or "Everyone").
+   --------------------------------------------------------------------- */
+function getHolidays() {
+  try { return JSON.parse(settings.holidays || '[]'); } catch (e) { return []; }
+}
+function computePendingDays(person) {
+  const holidaySet = new Set(getHolidays().filter(h => h.person === 'All' || h.person === person).map(h => h.date));
+  const loggedDates = new Set(entries.filter(e => e.person === person).map(e => e.start.slice(0, 10)));
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const pending = [];
+  let d = new Date(start);
+  while (d <= now) {
+    const dow = d.getDay();
+    const dateStr = d.toISOString().slice(0, 10);
+    if (dow !== 0 && dow !== 6 && !holidaySet.has(dateStr) && !loggedDates.has(dateStr)) pending.push(dateStr);
+    d.setDate(d.getDate() + 1);
+  }
+  return pending;
+}
+function fmtDate(dateStr) {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+function renderPendingDays() {
+  const wrap = document.getElementById('pending-days-list');
+  wrap.innerHTML = '';
+  PEOPLE.forEach(p => {
+    const pending = computePendingDays(p);
+    const row = document.createElement('div');
+    row.className = 'pending-row';
+    const top = document.createElement('div');
+    top.className = 'pending-top';
+    top.innerHTML = `<span class="pending-name">${p}</span><span class="pending-count${pending.length === 0 ? ' clean' : ''}">${pending.length === 0 ? 'all caught up' : pending.length + ' missing'}</span>`;
+    row.appendChild(top);
+    if (pending.length > 0) {
+      const dates = document.createElement('div');
+      dates.className = 'pending-dates';
+      dates.textContent = pending.map(fmtDate).join(', ');
+      row.appendChild(dates);
+      const btn = document.createElement('button');
+      btn.className = 'small-btn';
+      btn.textContent = 'Post reminder banner';
+      btn.onclick = () => postReminder(p, pending);
+      row.appendChild(btn);
+    }
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('pending-days-refresh-btn').onclick = loadCurrentState;
+
+/* ---------------------------------------------------------------------
+   Active reminder — one shared alert at a time, shown as ribbons on
+   the main app until cleared here.
+   --------------------------------------------------------------------- */
+async function postReminder(person, pendingDates) {
+  const alertData = { active: true, person, days: pendingDates.map(fmtDate) };
+  await apiSetSetting('missingDaysAlert', JSON.stringify(alertData));
+  settings.missingDaysAlert = JSON.stringify(alertData);
+  renderActiveAlertStatus();
+}
+function getActiveAlert() {
+  try { return JSON.parse(settings.missingDaysAlert || 'null'); } catch (e) { return null; }
+}
+function renderActiveAlertStatus() {
+  const statusEl = document.getElementById('active-alert-status');
+  const clearBtn = document.getElementById('clear-alert-btn');
+  const alertData = getActiveAlert();
+  if (alertData && alertData.active) {
+    statusEl.textContent = `ON — ${alertData.person}: ${alertData.days.join(', ')}`;
+    clearBtn.style.display = 'inline-block';
+  } else {
+    statusEl.textContent = 'No active reminder.';
+    clearBtn.style.display = 'none';
+  }
+}
+document.getElementById('clear-alert-btn').onclick = async () => {
+  const cleared = { active: false, person: '', days: [] };
+  await apiSetSetting('missingDaysAlert', JSON.stringify(cleared));
+  settings.missingDaysAlert = JSON.stringify(cleared);
+  renderActiveAlertStatus();
 };
 
 if (!WEB_APP_URL) {

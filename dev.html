@@ -249,6 +249,9 @@ document.getElementById('birthday-save-btn').onclick = async () => {
 function getHolidays() {
   try { return JSON.parse(settings.holidays || '[]'); } catch (e) { return []; }
 }
+function toLocalDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 function computePendingDays(person) {
   const holidaySet = new Set(getHolidays().filter(h => h.person === 'All' || h.person === person).map(h => h.date));
   const loggedDates = new Set(entries.filter(e => e.person === person).map(e => e.start.slice(0, 10)));
@@ -258,7 +261,7 @@ function computePendingDays(person) {
   let d = new Date(start);
   while (d <= now) {
     const dow = d.getDay();
-    const dateStr = d.toISOString().slice(0, 10);
+    const dateStr = toLocalDateStr(d);
     if (dow !== 0 && dow !== 6 && !holidaySet.has(dateStr) && !loggedDates.has(dateStr)) pending.push(dateStr);
     d.setDate(d.getDate() + 1);
   }

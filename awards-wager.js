@@ -276,7 +276,7 @@ const dailyFacts = [
   "Some pistol shrimp snap their claw so fast it briefly creates heat close to the sun's surface temperature.",
   "There's a fish called the ocean sunfish that can lay 300 million eggs at once.",
   "Male seahorses are the ones who get pregnant and give birth.",
-   "Dolphins have unique names for each other.,
+   "Dolphins have unique names for each other.",
    "Koalas have fingerprints nearly identical to humans.",
   "Sharks existed before trees.",
   "Duck quacks technically do echo — the myth that they don't is false.",

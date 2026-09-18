@@ -697,25 +697,55 @@ async function addArchivedMatchId(matchId) {
   try { await apiSetSetting('archivedMatchIds', settings.archivedMatchIds); } catch (e) { console.error('Failed to persist archived match list', e); }
 }
 
+
 async function loadData() {
+  console.log('[Punch Board] Starting data load…');
+
   try {
     const data = await apiGetAll();
+
+    console.log('[Punch Board] Backend response:', data);
+
+    if (!data || typeof data !== 'object') {
+      throw new Error('Backend response is not an object.');
+    }
+
+    console.log('[Punch Board] Response keys:', Object.keys(data));
+
     entries = data.entries || [];
     moodEntries = data.moodEntries || [];
     settings = data.settings || {};
+
     const archivedIds = getArchivedMatchIds();
-    matches = (data.matches || []).filter(m => !archivedIds.includes(m.id));
-    predictions = (data.predictions || []).filter(pr => !archivedIds.includes(pr.matchId));
+    matches = (data.matches || []).filter(
+      m => !archivedIds.includes(m.id)
+    );
+    predictions = (data.predictions || []).filter(
+      pr => !archivedIds.includes(pr.matchId)
+    );
     winnerPicks = data.winnerPicks || [];
-    syncMoodToIdentity(); // re-derive today's ratings for whoAmI now that real data is in
+
+    console.log('[Punch Board] Loaded counts:', {
+      entries: entries.length,
+      moodEntries: moodEntries.length,
+      matches: matches.length,
+      predictions: predictions.length,
+      winnerPicks: winnerPicks.length,
+      settings: Object.keys(settings).length
+    });
+
+    syncMoodToIdentity();
+
+    renderTimeTab();
+    renderCrewPulse();
+    renderEggDrawer();
+    renderMasteryDecoration();
+    renderBirthdayDecorations();
+    renderMissingDaysBanners();
+
   } catch (e) {
-    console.error('Failed to load data', e);
+    console.error('[Punch Board] Data load failed:', e);
   }
-  renderTimeTab(); // default active tab on load — others render on demand via switchMainTab
-  renderCrewPulse();
-  renderEggDrawer();
-  renderMasteryDecoration();
-  renderBirthdayDecorations();
-  renderMissingDaysBanners(); 
 }
+
 loadData();

@@ -272,20 +272,32 @@ function setOvertimeVisible(v) { localStorage.setItem(OVERTIME_VISIBLE_KEY, v ? 
 function getOvertimePeriod() { return localStorage.getItem(OVERTIME_PERIOD_KEY) || 'thisMonth'; }
 function setOvertimePeriod(p) { localStorage.setItem(OVERTIME_PERIOD_KEY, p); }
 
+const DEFAULT_WEEKLY_HOURS = [0, 8, 8, 8, 8, 8, 0]; // Sunday first
+function getSchedules() { try { return JSON.parse(settings.workSchedules || '{}'); } catch (_) { return {}; } }
+function getVacations() { try { return JSON.parse(settings.vacations || '[]'); } catch (_) { return []; } }
+function hoursForDate(person, dateStr) {
+  const day = new Date(dateStr + 'T12:00:00').getDay();
+  const ranges = getSchedules()[person] || [];
+  const active = ranges.find(x => x.start <= dateStr && x.end >= dateStr);
+  return active ? Number(active.days[day] || 0) : DEFAULT_WEEKLY_HOURS[day];
+}
 function countExpectedWorkdays(startStr, endStr, person) {
-  const holidaySet = new Set(
-    getHolidays().filter(h => h.person === 'All' || h.person === person).map(h => h.date)
-  );
-  let count = 0;
-  let d = new Date(startStr + 'T00:00:00');
-  const end = new Date(endStr + 'T00:00:00');
-  while (d <= end) {
-    const dow = d.getDay(); // 0 = Sunday, 6 = Saturday
-    const dateStr = d.toISOString().slice(0, 10);
-    if (dow !== 0 && dow !== 6 && !holidaySet.has(dateStr)) count++;
-    d.setDate(d.getDate() + 1);
-  }
-  return count;
+  const holidays = new Set(getHolidays().filter(h => h.person === 'All' || h.person === person).map(h => h.date));
+  const vacations = new Set(getVacations().filter(v => v.person === person).map(v => v.date));
+  let count = 0, d = new Date(startStr + 'T12:00:00'), end = new Date(endStr + 'T12:00:00');
+  while (d <= end) { const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (!holidays.has(ds) && !vacations.has(ds) && hoursForDate(person, ds) > 0) count++;
+    d.setDate(d.getDate()+1);
+  } return count;
+}
+function expectedHoursInRange(startStr, endStr, person) {
+  const holidays = new Set(getHolidays().filter(h => h.person === 'All' || h.person === person).map(h => h.date));
+  const vacations = new Set(getVacations().filter(v => v.person === person).map(v => v.date));
+  let total = 0, d = new Date(startStr + 'T12:00:00'), end = new Date(endStr + 'T12:00:00');
+  while (d <= end) { const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (!holidays.has(ds) && !vacations.has(ds)) total += hoursForDate(person, ds);
+    d.setDate(d.getDate()+1);
+  } return total;
 }
 function sumHoursInRange(person, startStr, endStr) {
   return entries
@@ -347,7 +359,7 @@ function renderOvertimePanel() {
   PEOPLE.forEach(p => {
     const range = getOvertimeRange(period, p);
     const expectedDays = countExpectedWorkdays(range.start, range.end, p);
-    const expectedHours = expectedDays * 8;
+    const expectedHours = expectedHoursInRange(range.start, range.end, p);
     const actualHours = sumHoursInRange(p, range.start, range.end);
     const extra = actualHours - expectedHours;
 
@@ -367,7 +379,7 @@ function renderOvertimePanel() {
     row.appendChild(top);
     const sub = document.createElement('div');
     sub.className = 'leader-meta';
-    sub.textContent = `${actualHours.toFixed(1)}h logged vs ${expectedHours}h expected (${expectedDays} weekdays, ${range.label})`;
+    sub.textContent = `${actualHours.toFixed(1)}h logged vs ${expectedHours}h expected (${expectedDays} scheduled days, ${range.label})`;
     row.appendChild(sub);
     rows.appendChild(row);
   });
@@ -739,3 +751,12 @@ document.getElementById('mood-nudge-dismiss').onclick = () => {
   localStorage.setItem(NUDGE_DISMISS_KEY, todayISO());
   updateMoodNudge();
 };
+
+
+// Schedules and vacation dates are persisted through the existing settings API.
+function populateSchedulePeople() { ['schedule-person-input','vacation-person-input'].forEach(id => { const el=document.getElementById(id); if(!el) return; el.innerHTML=''; PEOPLE.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;el.appendChild(o);}); }); }
+async function persistScheduleData(key, value) { settings[key]=JSON.stringify(value); try { await apiSetSetting(key, settings[key]); } catch(e) { console.error(`Failed to save ${key}`,e); } }
+function renderScheduleList() { const wrap=document.getElementById('schedule-list'); if(!wrap)return; wrap.innerHTML=''; const all=getSchedules(); let count=0; PEOPLE.forEach(person=>(all[person]||[]).forEach(item=>{count++; const row=document.createElement('div');row.className='holiday-row'; const txt=document.createElement('span');txt.className='holiday-label';txt.textContent=`${person}: ${item.start} – ${item.end==='9999-12-31'?'ongoing':item.end} · ${item.days.map((h,i)=>`${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][i]} ${h}h`).filter(x=>!x.endsWith(' 0h')).join(', ')||'No scheduled hours'}`;row.appendChild(txt);const del=document.createElement('button');del.className='delete-btn';del.textContent='✕';del.title='Remove schedule';del.onclick=async()=>{all[person]=all[person].filter(x=>x.id!==item.id);await persistScheduleData('workSchedules',all);renderScheduleList();renderOvertimePanel();};row.appendChild(del);wrap.appendChild(row);})); if(!count)wrap.innerHTML='<div class="empty-state">No custom schedules saved; weekdays default to 8 hours.</div>'; }
+function renderVacationList() { const wrap=document.getElementById('vacation-list');if(!wrap)return;wrap.innerHTML='';const list=getVacations().slice().sort((a,b)=>a.date.localeCompare(b.date));if(!list.length){wrap.innerHTML='<div class="empty-state">No vacation days added.</div>';return;}list.forEach(v=>{const row=document.createElement('div');row.className='holiday-row';const txt=document.createElement('span');txt.className='holiday-label';txt.textContent=`${v.date} · ${v.person}${v.label?' · '+v.label:''}`;row.appendChild(txt);const del=document.createElement('button');del.className='delete-btn';del.textContent='✕';del.onclick=async()=>{await persistScheduleData('vacations',getVacations().filter(x=>x.id!==v.id));renderVacationList();renderOvertimePanel();};row.appendChild(del);wrap.appendChild(row);});}
+function initScheduleVacation() { populateSchedulePeople(); const mode=document.getElementById('schedule-mode-input'), endField=document.getElementById('schedule-end-field'); if(!mode)return; mode.onchange=()=>{endField.style.display=mode.value==='forward'?'none':'';}; mode.onchange(); document.getElementById('save-schedule-btn').onclick=async()=>{const person=document.getElementById('schedule-person-input').value,start=document.getElementById('schedule-start-input').value,modeVal=mode.value,end=modeVal==='forward'?'9999-12-31':document.getElementById('schedule-end-input').value;if(!start||!end||end<start){alert('Choose a valid start and end date.');return;}const ids=['schedule-sun','schedule-mon','schedule-tue','schedule-wed','schedule-thu','schedule-fri','schedule-sat'];const days=ids.map(id=>Number(document.getElementById(id).value));if(days.some(x=>!Number.isFinite(x)||x<0||x>24)){alert('Hours must be between 0 and 24.');return;}const all=getSchedules(),old=all[person]||[],next=[];old.forEach(x=>{if(x.end<start||x.start>end){next.push(x);return;}if(x.start<start)next.push({...x,end:new Date(new Date(start+'T12:00:00').getTime()-86400000).toISOString().slice(0,10)});if(x.end>end&&end!=='9999-12-31')next.push({...x,start:new Date(new Date(end+'T12:00:00').getTime()+86400000).toISOString().slice(0,10)});});next.push({id:`schedule-${Date.now()}`,start,end,days});all[person]=next.sort((a,b)=>a.start.localeCompare(b.start));await persistScheduleData('workSchedules',all);renderScheduleList();renderOvertimePanel();};document.getElementById('add-vacation-btn').onclick=async()=>{const person=document.getElementById('vacation-person-input').value,date=document.getElementById('vacation-date-input').value,label=document.getElementById('vacation-label-input').value.trim();if(!date){alert('Choose a vacation date.');return;}const list=getVacations();if(!list.some(v=>v.person===person&&v.date===date))list.push({id:`vacation-${Date.now()}`,person,date,label});await persistScheduleData('vacations',list);document.getElementById('vacation-label-input').value='';renderVacationList();renderOvertimePanel();};renderScheduleList();renderVacationList();}
+document.addEventListener('DOMContentLoaded', initScheduleVacation);

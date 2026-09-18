@@ -77,7 +77,7 @@
         <div class="panel-label">EXTRA HOURS</div>
         <button class="archive-btn" id="overtime-toggle-btn">Show</button>
       </div>
-      <div class="panel-sub">Assumes an 8h/day expectation, Mon–Fri only — weekends and holidays don't count against anyone.</div>
+      <div class="panel-sub">Uses each person’s saved weekday schedule. Holidays and vacation days are excluded from expected hours.</div>
       <div id="overtime-content" style="display:none;">
         <div class="toggle-group" id="overtime-period-toggle" style="margin-bottom:14px;">
           <button class="toggle-btn active" data-period="thisMonth">This month</button>
@@ -86,6 +86,54 @@
         </div>
         <div id="overtime-rows"></div>
       </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">SCHEDULES &amp; VACATION</div>
+      <div class="panel-sub">Set a person’s expected hours by weekday. Historical changes only affect the dates you choose; “from this date forward” preserves everything before it.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Person</label>
+          <select id="schedule-person-input"></select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Change applies</label>
+          <select id="schedule-mode-input">
+            <option value="range">Historical period</option>
+            <option value="forward">From this date forward</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Start date</label>
+          <input type="date" id="schedule-start-input" />
+        </div>
+        <div class="form-field" id="schedule-end-field">
+          <label class="form-label">End date</label>
+          <input type="date" id="schedule-end-input" />
+        </div>
+      </div>
+      <div class="form-row" style="gap:8px;">
+        <div class="form-field"><label class="form-label">Mon</label><input type="number" min="0" max="24" step="0.25" id="schedule-mon" value="8" /></div>
+        <div class="form-field"><label class="form-label">Tue</label><input type="number" min="0" max="24" step="0.25" id="schedule-tue" value="8" /></div>
+        <div class="form-field"><label class="form-label">Wed</label><input type="number" min="0" max="24" step="0.25" id="schedule-wed" value="8" /></div>
+        <div class="form-field"><label class="form-label">Thu</label><input type="number" min="0" max="24" step="0.25" id="schedule-thu" value="8" /></div>
+        <div class="form-field"><label class="form-label">Fri</label><input type="number" min="0" max="24" step="0.25" id="schedule-fri" value="8" /></div>
+        <div class="form-field"><label class="form-label">Sat</label><input type="number" min="0" max="24" step="0.25" id="schedule-sat" value="0" /></div>
+        <div class="form-field"><label class="form-label">Sun</label><input type="number" min="0" max="24" step="0.25" id="schedule-sun" value="0" /></div>
+      </div>
+      <button class="add-btn" id="save-schedule-btn">Save schedule</button>
+      <div id="schedule-list" style="margin-top:14px;"></div>
+
+      <div style="height:18px;"></div>
+      <div class="panel-label">VACATION DAYS</div>
+      <div class="panel-sub">Vacation removes that date from expected hours for the selected person. Logged work on a vacation day still counts as actual hours.</div>
+      <div class="form-row">
+        <div class="form-field"><label class="form-label">Who</label><select id="vacation-person-input"></select></div>
+        <div class="form-field"><label class="form-label">Date</label><input type="date" id="vacation-date-input" /></div>
+        <div class="form-field" style="flex:2 1 200px;"><label class="form-label">Note (optional)</label><input type="text" id="vacation-label-input" placeholder="e.g. Summer holiday" /></div>
+      </div>
+      <button class="add-btn" id="add-vacation-btn">Add vacation day</button>
+      <div id="vacation-list" style="margin-top:14px;"></div>
     </section>
 
     <section class="panel">

@@ -716,7 +716,6 @@ async function loadData() {
   renderEggDrawer();
   renderMasteryDecoration();
   renderBirthdayDecorations();
-  renderMissingDaysBanners();
-   loadData();
+  renderMissingDaysBanners(); 
 }
-
+loadData();

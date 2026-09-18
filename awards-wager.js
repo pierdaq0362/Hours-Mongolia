@@ -285,7 +285,7 @@ const dailyFacts = [
   "The world's oldest known joke is a 3,900-year-old Sumerian proverb about flatulence.",
   "Cows moo in regional accents.",
   "An octopus can taste with its entire body through its skin.",
-
+  "Salary comes from the Latin for salt. Because roman soldiers were paid in salt",
   'A group of crows is called a murder.',
   'The Eiffel Tower can grow a little taller in hot weather.',
   'A day on Venus is longer than a year on Venus.',
@@ -303,7 +303,7 @@ const dailyFacts = [
   'The human nose can distinguish many thousands of odors.',
   'A bolt of lightning can heat surrounding air extremely quickly.',
   'The Pacific Ocean is larger than all Earth’s land area combined.',
-  'The first oranges were not orange; some were green when ripe.',
+  'Whiskey comes from the Gaelic uisge beath aka water of life',
   'A group of porcupines is called a prickle.',
   'Some bamboo species can grow remarkably quickly under ideal conditions.',
   'A day on Mars is about 24 hours and 39 minutes.',

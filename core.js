@@ -1,7 +1,7 @@
 /* =========================================================================
    CONFIG — paste your Apps Script Web App URL below between the quotes.
    ========================================================================= */
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwm1XTMSf_1sz_KmwvoEEbllJxkZLIVM1wvIcB81vaGJJsA_4KKuO9dLBCLrdWmxebP/exec';
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyZcAEDyZVNAJHuKaAI9DkHn_2I5nd2hILj_8cbEvKLrJdf-UmHAr968-DNB8wvAZ2N/exec';
 
 const PEOPLE = ['Luigi', 'Juan', 'Sergio'];
 const COLORS = { Luigi: '#D97757', Juan: '#4A7C7C', Sergio: '#8B6F47' };

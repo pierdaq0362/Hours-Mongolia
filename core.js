@@ -717,4 +717,6 @@ async function loadData() {
   renderMasteryDecoration();
   renderBirthdayDecorations();
   renderMissingDaysBanners();
+   loadData();
 }
+

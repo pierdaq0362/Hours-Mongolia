@@ -337,34 +337,6 @@ function renderFactOfDay() {
 }
 
 /* ---------------------------------------------------------------------
-   Random Animal Pic — separate from the fact above. Uses a direct
-   <img src="..."> pointing at an image-serving URL (not a JSON API),
-   so it doesn't depend on fetch()/CORS. Locked to one photo per
-   calendar day via localStorage so the whole crew sees the same one.
-   --------------------------------------------------------------------- */
-const ANIMAL_PIC_KEY = 'punchboard-animal-pic';
-const ANIMAL_KEYWORDS = ['dog', 'cat', 'fox', 'panda', 'koala', 'owl', 'elephant', 'penguin', 'otter', 'hedgehog', 'rabbit', 'giraffe', 'wolf', 'seal', 'raccoon'];
-function pickAnimalUrl() {
-  const keyword = ANIMAL_KEYWORDS[Math.floor(Math.random() * ANIMAL_KEYWORDS.length)];
-  return `https://loremflickr.com/640/360/${keyword}?random=${Date.now()}`;
-}
-function renderAnimalPic(forceNew) {
-  const wrap = document.getElementById('animal-pic-wrap');
-  const today = todayISO();
-  let stored = null;
-  try { stored = JSON.parse(localStorage.getItem(ANIMAL_PIC_KEY) || 'null'); } catch (e) {}
-  let url;
-  if (!forceNew && stored && stored.date === today) {
-    url = stored.url;
-  } else {
-    url = pickAnimalUrl();
-    localStorage.setItem(ANIMAL_PIC_KEY, JSON.stringify({ date: today, url }));
-  }
-  wrap.innerHTML = `<img src="${url}" alt="random animal" onerror="this.parentElement.innerHTML='<span class=&quot;empty-state&quot;>couldn\\'t load a photo — tap 🔄 New photo above to retry</span>'">`;
-}
-document.getElementById('animal-pic-retry-btn').onclick = () => renderAnimalPic(true);
-
-/* ---------------------------------------------------------------------
    Crew Pulse — one-line-per-person banner, computed live from this
    week's hours + mood. No input required, just real numbers.
    --------------------------------------------------------------------- */

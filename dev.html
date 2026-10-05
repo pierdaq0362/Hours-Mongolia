@@ -297,7 +297,14 @@ function toLocalDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 function computePendingDays(person) {
-  const holidaySet = new Set(getHolidays().filter(h => h.person === 'All' || h.person === person).map(h => h.date));
+  const holidaySet = new Set();
+  getHolidays().filter(h => h.person === 'All' || h.person === person).forEach(h => {
+    const start = h.startDate || h.date;
+    const end = h.endDate || h.date;
+    let d = new Date(start + 'T00:00:00');
+    const e = new Date(end + 'T00:00:00');
+    while (d <= e) { holidaySet.add(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+  });
   const loggedDates = new Set(entries.filter(e => e.person === person).map(e => e.start.slice(0, 10)));
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);

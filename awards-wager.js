@@ -337,6 +337,48 @@ function renderFactOfDay() {
 }
 
 /* ---------------------------------------------------------------------
+   Random Animal Pic — uses dedicated, stable pet-photo JSON APIs
+   (dog.ceo and TheCatAPI) instead of a generic "random image" proxy
+   like loremflickr, which rotted over time. Both are free, no API key,
+   CORS-enabled, and have been stable for years. Locked to one photo
+   per calendar day via localStorage so the whole crew sees the same one.
+   --------------------------------------------------------------------- */
+const ANIMAL_PIC_KEY = 'punchboard-animal-pic';
+const ANIMAL_SOURCES = [
+  { name: 'dog', url: 'https://dog.ceo/api/breeds/image/random', pick: (data) => data.message },
+  { name: 'cat', url: 'https://api.thecatapi.com/v1/images/search', pick: (data) => data[0] && data[0].url },
+];
+async function fetchAnimalUrl() {
+  const source = ANIMAL_SOURCES[Math.floor(Math.random() * ANIMAL_SOURCES.length)];
+  const res = await fetch(source.url, { cache: 'no-store' });
+  const data = await res.json();
+  const url = source.pick(data);
+  if (!url) throw new Error('No image in response');
+  return url;
+}
+async function renderAnimalPic(forceNew) {
+  const wrap = document.getElementById('animal-pic-wrap');
+  if (!wrap) return;
+  const today = todayISO();
+  let stored = null;
+  try { stored = JSON.parse(localStorage.getItem(ANIMAL_PIC_KEY) || 'null'); } catch (e) {}
+  if (!forceNew && stored && stored.date === today && stored.url) {
+    wrap.innerHTML = `<img src="${stored.url}" alt="random animal">`;
+    return;
+  }
+  wrap.innerHTML = '<span class="empty-state">loading photo…</span>';
+  try {
+    const url = await fetchAnimalUrl();
+    localStorage.setItem(ANIMAL_PIC_KEY, JSON.stringify({ date: today, url }));
+    wrap.innerHTML = `<img src="${url}" alt="random animal" onerror="this.parentElement.innerHTML='<span class=&quot;empty-state&quot;>couldn\\'t load that photo — tap 🔄 New photo above to retry</span>'">`;
+  } catch (e) {
+    console.error('Failed to load animal photo', e);
+    wrap.innerHTML = '<span class="empty-state">couldn\'t load a photo — tap 🔄 New photo above to retry</span>';
+  }
+}
+document.getElementById('animal-pic-retry-btn').onclick = () => renderAnimalPic(true);
+
+/* ---------------------------------------------------------------------
    Crew Pulse — one-line-per-person banner, computed live from this
    week's hours + mood. No input required, just real numbers.
    --------------------------------------------------------------------- */

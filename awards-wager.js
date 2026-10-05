@@ -240,7 +240,7 @@ function renderWeeklyRecap() {
    Local list, no network call, so it's 100% reliable. Deterministic
    per calendar day so the whole crew sees the same fact.
    --------------------------------------------------------------------- */
-const dailyFacts = [
+const DEFAULT_DAILY_FACTS = [
   "Platypuses don't have nipples — they sweat milk through their skin.",
   "Wombat poop is cube-shaped so it doesn't roll away.",
   "The inventor of the Pringles can is buried in one.",
@@ -249,10 +249,9 @@ const dailyFacts = [
   "There's a species of jellyfish that can revert to a baby state and become immortal.",
   "A shrimp's heart is in its head.",
   "Cows have best friends and get stressed when separated from them.",
-  "Oxford University is older than the Aztec Empire.",
+  "Scotland's national animal is the unicorn.",
   "A crocodile can't stick its tongue out.",
   "Slugs have four noses.",
-  "A day on Mercury is longer than its year.",
   "Some turtles breathe through their butts.",
   "The dot over a lowercase 'i' or 'j' has a name: a tittle.",
   "A single cloud can weigh over a million pounds.",
@@ -263,21 +262,13 @@ const dailyFacts = [
   "There's a town in Norway called Hell, and it freezes over most winters.",
   "A crowd of jellyfish is called a 'smack'.",
   "Snails can sleep for up to three years.",
-  "Lightning strikes Earth about 100 times every second.",
-   "Humans glow faintly in the dark, but our eyes can’t see it.",
-   "Humans share about 60% of their DNA with bananas.",
-   "You breathe more through one nostril at a time, and it switches every few hours.",
-   "A live cockroach can survive for weeks without its head before starving to death.",
-  "There are more trees on Earth than stars in the Milky Way.",
+  "A live cockroach can survive for weeks without its head before starving to death.",
   "Wolves can hear each other howling from up to 6 miles away in the forest, and 10 in open tundra.",
   "Tardigrades ('water bears') can survive being shot out of a gun and the vacuum of space.",
   "The 'five second rule' for dropped food was tested and is basically nonsense — bacteria transfers instantly.",
   "Some pistol shrimp snap their claw so fast it briefly creates heat close to the sun's surface temperature.",
   "There's a fish called the ocean sunfish that can lay 300 million eggs at once.",
   "Male seahorses are the ones who get pregnant and give birth.",
-   "Dolphins have unique names for each other.",
-   "Koalas have fingerprints nearly identical to humans.",
-  "Sharks existed before trees.",
   "Duck quacks technically do echo — the myth that they don't is false.",
   "A blue whale's heart is the size of a small car and can be heard from over 2 miles away.",
   "Kangaroos can't walk backwards.",
@@ -285,67 +276,93 @@ const dailyFacts = [
   "The world's oldest known joke is a 3,900-year-old Sumerian proverb about flatulence.",
   "Cows moo in regional accents.",
   "An octopus can taste with its entire body through its skin.",
-  "Salary comes from the Latin for salt. Because roman soldiers were paid in salt",
-  'A group of crows is called a murder.',
-  'The Eiffel Tower can grow a little taller in hot weather.',
-  'A day on Venus is longer than a year on Venus.',
-  'Butterflies taste with their feet.',
-  'The shortest war in recorded history lasted less than an hour.',
-  'A jiffy is an actual informal unit of time.',
-  'The hashtag symbol is also called an octothorpe.',
-  'Some cats chirp at birds rather than meow.',
-  'A newborn kangaroo is about the size of a grape.',
-  'The Moon has moonquakes.',
-  'A cloud is made of tiny water droplets or ice crystals.',
-  'A group of owls is sometimes called a parliament.',
-  'The word “muscle” comes from a Latin word meaning little mouse.',
-  'A narwhal’s tusk is an elongated tooth.',
-  'The human nose can distinguish many thousands of odors.',
-  'A bolt of lightning can heat surrounding air extremely quickly.',
-  'The Pacific Ocean is larger than all Earth’s land area combined.',
-  'Whiskey comes from the Gaelic uisge beath aka water of life',
-  'A group of porcupines is called a prickle.',
-  'Some bamboo species can grow remarkably quickly under ideal conditions.',
-  'A day on Mars is about 24 hours and 39 minutes.',
-  'The fingerprints of koalas resemble human fingerprints.',
-  'The word “alphabet” comes from the names alpha and beta.',
-  'A snail’s shell grows with it throughout its life.',
-  'An adult human has 206 bones, though babies have more.',
-  'The blue whale is the largest animal known to have lived.',
-  'The first computer “bug” was an actual insect found in a machine.',
-  'A standard deck of cards has 52 cards, not counting jokers.',
-  'The Sun contains most of the mass of the solar system.',
-  'Some frogs can freeze during winter and thaw in spring.',
-  'A group of parrots is sometimes called a pandemonium.',
-  'The word “robot” comes from a Czech word related to forced labor.',
-  'The Earth is not a perfect sphere; it bulges slightly at the equator.',
-  'A hummingbird can fly backward.',
-  'The world’s largest desert is Antarctica.',
-  'A shrimp’s heart is located in its cephalothorax.',
-  'The letter “E” is the most common letter in English text.',
-  'A group of giraffes is sometimes called a tower.',
-  'The Great Wall of China is not readily visible to the unaided eye from the Moon.',
-  'Some sea stars can regrow lost arms.',
-  'A rainbow is a full circle, though the ground usually hides part of it.',
-  'The smell after rain is often called petrichor.',
-  'A crocodile’s sex can be influenced by incubation temperature.',
-  'The first email was sent in the early 1970s.',
-  'A group of frogs is called an army.',
-  'Saturn is less dense than water on average.',
-  'A penguin’s knees are hidden beneath its feathers.',
-  'The word “queue” has four silent letters at the end.',
-  'The world’s oldest known living trees are thousands of years old.',
-  'A blue whale’s tongue can weigh as much as an elephant.',
-  'Some fungi form vast underground networks.',
 ];
+function getDailyFactsList() {
+  try {
+    const stored = JSON.parse(settings.dailyFacts || 'null');
+    return (stored && stored.length) ? stored : DEFAULT_DAILY_FACTS;
+  } catch (e) { return DEFAULT_DAILY_FACTS; }
+}
+async function saveDailyFactsList(list) {
+  settings.dailyFacts = JSON.stringify(list);
+  try { await apiSetSetting('dailyFacts', settings.dailyFacts); } catch (e) { console.error('Failed to save facts list', e); }
+}
+function getFactVotes() {
+  try { return JSON.parse(settings.factVotes || '{}'); } catch (e) { return {}; }
+}
+async function saveFactVotes(votes) {
+  settings.factVotes = JSON.stringify(votes);
+  try { await apiSetSetting('factVotes', settings.factVotes); } catch (e) { console.error('Failed to save fact votes', e); }
+}
 function dayOfYear(d) {
   const start = new Date(d.getFullYear(), 0, 0);
   return Math.floor((d - start) / 86400000);
 }
-function renderFactOfDay() {
-  const idx = dayOfYear(new Date()) % dailyFacts.length;
-  document.getElementById('fact-of-day').textContent = dailyFacts[idx];
+function todaysFact() {
+  const list = getDailyFactsList();
+  const idx = dayOfYear(new Date()) % list.length;
+  return list[idx];
 }
+async function voteOnFact(factText, type) {
+  if (!whoAmI) { alert("Pick who you are first (the header at the top of the app) to vote."); return; }
+  const votes = getFactVotes();
+  if (!votes[factText]) votes[factText] = { likedBy: [], dislikedBy: [] };
+  const rec = votes[factText];
+  rec.likedBy = rec.likedBy.filter(p => p !== whoAmI);
+  rec.dislikedBy = rec.dislikedBy.filter(p => p !== whoAmI);
+  if (type === 'like') rec.likedBy.push(whoAmI);
+  if (type === 'dislike') rec.dislikedBy.push(whoAmI);
+  await saveFactVotes(votes);
+  renderFactOfDay();
+}
+function renderFactOfDay() {
+  const fact = todaysFact();
+  const textEl = document.getElementById('fact-of-day');
+  if (textEl) textEl.textContent = fact;
+
+  const votes = getFactVotes();
+  const rec = votes[fact] || { likedBy: [], dislikedBy: [] };
+  const likeBtn = document.getElementById('fact-like-btn');
+  const dislikeBtn = document.getElementById('fact-dislike-btn');
+  if (likeBtn) {
+    likeBtn.textContent = `👍 ${rec.likedBy.length}`;
+    likeBtn.classList.toggle('active', rec.likedBy.includes(whoAmI));
+    likeBtn.onclick = () => voteOnFact(fact, 'like');
+  }
+  if (dislikeBtn) {
+    dislikeBtn.textContent = `👎 ${rec.dislikedBy.length}`;
+    dislikeBtn.classList.toggle('active', rec.dislikedBy.includes(whoAmI));
+    dislikeBtn.onclick = () => voteOnFact(fact, 'dislike');
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Random Animal Pic — separate from the fact above. Uses a direct
+   <img src="..."> pointing at an image-serving URL (not a JSON API),
+   so it doesn't depend on fetch()/CORS. Locked to one photo per
+   calendar day via localStorage so the whole crew sees the same one.
+   --------------------------------------------------------------------- */
+const ANIMAL_PIC_KEY = 'punchboard-animal-pic';
+const ANIMAL_KEYWORDS = ['dog', 'cat', 'fox', 'panda', 'koala', 'owl', 'elephant', 'penguin', 'otter', 'hedgehog', 'rabbit', 'giraffe', 'wolf', 'seal', 'raccoon'];
+function pickAnimalUrl() {
+  const keyword = ANIMAL_KEYWORDS[Math.floor(Math.random() * ANIMAL_KEYWORDS.length)];
+  return `https://loremflickr.com/640/360/${keyword}?random=${Date.now()}`;
+}
+function renderAnimalPic(forceNew) {
+  const wrap = document.getElementById('animal-pic-wrap');
+  const today = todayISO();
+  let stored = null;
+  try { stored = JSON.parse(localStorage.getItem(ANIMAL_PIC_KEY) || 'null'); } catch (e) {}
+  let url;
+  if (!forceNew && stored && stored.date === today) {
+    url = stored.url;
+  } else {
+    url = pickAnimalUrl();
+    localStorage.setItem(ANIMAL_PIC_KEY, JSON.stringify({ date: today, url }));
+  }
+  wrap.innerHTML = `<img src="${url}" alt="random animal" onerror="this.parentElement.innerHTML='<span class=&quot;empty-state&quot;>couldn\\'t load a photo — tap 🔄 New photo above to retry</span>'">`;
+}
+document.getElementById('animal-pic-retry-btn').onclick = () => renderAnimalPic(true);
 
 /* ---------------------------------------------------------------------
    Crew Pulse — one-line-per-person banner, computed live from this

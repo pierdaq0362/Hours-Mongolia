@@ -163,6 +163,12 @@
       <button class="add-btn" id="clear-alert-btn" style="margin-top:10px; display:none;">Clear active reminder</button>
     </section>
 
+    <section class="panel">
+      <div class="panel-label">👎 FLAGGED FACTS</div>
+      <div class="panel-sub">Any Fact of the Day with 2+ dislikes from the crew shows up here so you can pull it.</div>
+      <div id="flagged-facts-list">Loading…</div>
+    </section>
+
     <a class="back-link" href="index.html">← back to the app</a>
   </div>
 
@@ -174,7 +180,7 @@
    this page reads and writes shared settings via the existing generic
    setSetting action, same as everything in the Vault/Misc tab used to.
    ========================================================================= */
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyZcAEDyZVNAJHuKaAI9DkHn_2I5nd2hILj_8cbEvKLrJdf-UmHAr968-DNB8wvAZ2N/exec';
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwm1XTMSf_1sz_KmwvoEEbllJxkZLIVM1wvIcB81vaGJJsA_4KKuO9dLBCLrdWmxebP/exec';
 const DEV_PASSWORD = '16112000'; // same code the old Vault used — repurposed here since Misc no longer needs a password
 
 async function apiGetAll() {
@@ -185,6 +191,43 @@ async function apiSetSetting(key, value) {
   await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({ action: 'setSetting', key, value }) });
 }
 
+const DEFAULT_DAILY_FACTS = [
+  "Platypuses don't have nipples — they sweat milk through their skin.",
+  "Wombat poop is cube-shaped so it doesn't roll away.",
+  "The inventor of the Pringles can is buried in one.",
+  "A group of flamingos is called a 'flamboyance'.",
+  "Sea otters hold hands while sleeping so they don't drift apart.",
+  "There's a species of jellyfish that can revert to a baby state and become immortal.",
+  "A shrimp's heart is in its head.",
+  "Cows have best friends and get stressed when separated from them.",
+  "Scotland's national animal is the unicorn.",
+  "A crocodile can't stick its tongue out.",
+  "Slugs have four noses.",
+  "Some turtles breathe through their butts.",
+  "The dot over a lowercase 'i' or 'j' has a name: a tittle.",
+  "A single cloud can weigh over a million pounds.",
+  "Starfish don't have brains or blood.",
+  "Bees can get drunk on fermented nectar and get 'bounced' from the hive by guard bees.",
+  "The 'sound' of silence you hear in a quiet room is actually your own blood flow.",
+  "Hippos sweat a natural red-tinted, sunscreen-like substance.",
+  "There's a town in Norway called Hell, and it freezes over most winters.",
+  "A crowd of jellyfish is called a 'smack'.",
+  "Snails can sleep for up to three years.",
+  "A live cockroach can survive for weeks without its head before starving to death.",
+  "Wolves can hear each other howling from up to 6 miles away in the forest, and 10 in open tundra.",
+  "Tardigrades ('water bears') can survive being shot out of a gun and the vacuum of space.",
+  "The 'five second rule' for dropped food was tested and is basically nonsense — bacteria transfers instantly.",
+  "Some pistol shrimp snap their claw so fast it briefly creates heat close to the sun's surface temperature.",
+  "There's a fish called the ocean sunfish that can lay 300 million eggs at once.",
+  "Male seahorses are the ones who get pregnant and give birth.",
+  "Duck quacks technically do echo — the myth that they don't is false.",
+  "A blue whale's heart is the size of a small car and can be heard from over 2 miles away.",
+  "Kangaroos can't walk backwards.",
+  "Jackrabbits can reach speeds of up to 40 mph and use their giant ears to cool off, not just to hear.",
+  "The world's oldest known joke is a 3,900-year-old Sumerian proverb about flatulence.",
+  "Cows moo in regional accents.",
+  "An octopus can taste with its entire body through its skin.",
+];
 let settings = {};
 let entries = [];
 const PEOPLE = ['Luigi', 'Juan', 'Sergio'];
@@ -225,6 +268,7 @@ async function loadCurrentState() {
   }
   renderPendingDays();
   renderActiveAlertStatus();
+  renderFlaggedFacts();
 }
 
 document.getElementById('birthday-save-btn').onclick = async () => {
@@ -270,6 +314,69 @@ function computePendingDays(person) {
 function fmtDate(dateStr) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
+/* ---------------------------------------------------------------------
+   Flagged facts — any Fact of the Day with 2+ dislikes from the crew.
+   --------------------------------------------------------------------- */
+function getDailyFactsListDev() {
+  try {
+    const stored = JSON.parse(settings.dailyFacts || 'null');
+    return (stored && stored.length) ? stored : DEFAULT_DAILY_FACTS;
+  } catch (e) { return DEFAULT_DAILY_FACTS; }
+}
+function getFactVotesDev() {
+  try { return JSON.parse(settings.factVotes || '{}'); } catch (e) { return {}; }
+}
+async function saveDailyFactsListDev(list) {
+  settings.dailyFacts = JSON.stringify(list);
+  await apiSetSetting('dailyFacts', settings.dailyFacts);
+}
+async function saveFactVotesDev(votes) {
+  settings.factVotes = JSON.stringify(votes);
+  await apiSetSetting('factVotes', settings.factVotes);
+}
+function renderFlaggedFacts() {
+  const wrap = document.getElementById('flagged-facts-list');
+  if (!wrap) return;
+  const votes = getFactVotesDev();
+  const flagged = Object.keys(votes).filter(f => (votes[f].dislikedBy || []).length >= 2);
+  if (flagged.length === 0) {
+    wrap.innerHTML = '<div class="status-note">No flagged facts right now.</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  flagged.forEach(factText => {
+    const rec = votes[factText];
+    const row = document.createElement('div');
+    row.className = 'pending-row';
+    const top = document.createElement('div');
+    top.className = 'pending-top';
+    top.innerHTML = `<span class="pending-name">${factText}</span><span class="pending-count">👎 ${rec.dislikedBy.length} / 👍 ${(rec.likedBy||[]).length}</span>`;
+    row.appendChild(top);
+    const btn = document.createElement('button');
+    btn.className = 'add-btn';
+    btn.style.marginTop = '8px';
+    btn.textContent = 'Remove this fact';
+    btn.onclick = async () => {
+      btn.disabled = true;
+      btn.textContent = 'Removing…';
+      const list = getDailyFactsListDev().filter(f => f !== factText);
+      const v = getFactVotesDev();
+      delete v[factText];
+      try {
+        await saveDailyFactsListDev(list);
+        await saveFactVotesDev(v);
+        renderFlaggedFacts();
+      } catch (e) {
+        console.error(e);
+        btn.disabled = false;
+        btn.textContent = 'Failed — retry';
+      }
+    };
+    row.appendChild(btn);
+    wrap.appendChild(row);
+  });
+}
+
 function renderPendingDays() {
   const wrap = document.getElementById('pending-days-list');
   wrap.innerHTML = '';

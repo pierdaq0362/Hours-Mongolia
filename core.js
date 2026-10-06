@@ -124,7 +124,7 @@ function applyIdentityDefaults() {
     indicator.textContent = `You're ${whoAmI}`;
     const mp = document.getElementById('manual-person');
     const bp = document.getElementById('backfill-person');
-    const hp = document.getElementById('holiday-person-input');
+    const hp = document.getElementById('entry-person-input');
     const tp = document.getElementById('ticket-person-input');
     const sp = document.getElementById('suggestion-person-input');
     if (mp) mp.value = whoAmI;

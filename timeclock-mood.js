@@ -352,7 +352,7 @@ function renderWorkRatio(period) {
     name.textContent = p;
     const val = document.createElement('span');
     val.className = 'hours-value';
-    val.style.color = pct === null ? 'var(--faint)' : pct >= 95 ? '#2E9B5C' : pct >= 70 ? '#D9A441' : '#E0503C';
+    val.style.color = pct === null ? 'var(--faint)' : pct <= 100 ? '#2E9B5C' : pct <= 115 ? '#D9A441' : '#E0503C';
     val.textContent = pct === null ? '—' : `${Math.round(pct)}%`;
     top.appendChild(name);
     top.appendChild(val);
@@ -420,6 +420,8 @@ function renderStatsTab() {
   });
   renderWorkRatio(period);
   renderOvertimeRows(period);
+  renderTrendChart();
+  renderHeatmap();
 }
 document.getElementById('stats-period-toggle').querySelectorAll('.toggle-btn').forEach(b => {
   b.onclick = () => {
@@ -427,6 +429,137 @@ document.getElementById('stats-period-toggle').querySelectorAll('.toggle-btn').f
     renderStatsTab();
   };
 });
+
+/* ---------------------------------------------------------------------
+   Hours Trend + Day-of-Week Heatmap — both use a fixed trailing 8-week
+   window (Monday–Sunday buckets, current week included and partial),
+   independent of the Work Ratio / Extra Hours period toggle above.
+   --------------------------------------------------------------------- */
+function mondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function getWeekBuckets(n) {
+  const pad = x => String(x).padStart(2, '0');
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const thisMonday = mondayOf(new Date());
+  const buckets = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const start = new Date(thisMonday);
+    start.setDate(start.getDate() - i * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    buckets.push({ start: iso(start), end: iso(end), label: start.toLocaleDateString([], { day: '2-digit', month: 'short' }) });
+  }
+  return buckets;
+}
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function renderTrendChart() {
+  const container = document.getElementById('trend-chart');
+  const legend = document.getElementById('trend-legend');
+  if (!container) return;
+  const buckets = getWeekBuckets(8);
+  const series = PEOPLE.map(p => ({
+    person: p,
+    values: buckets.map(b => sumHoursInRange(p, b.start, b.end)),
+  }));
+  const maxVal = Math.max(5, ...series.flatMap(s => s.values));
+  const W = 600, H = 180, padL = 32, padR = 10, padT = 10, padB = 22;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const xStep = buckets.length > 1 ? plotW / (buckets.length - 1) : 0;
+  const yFor = v => padT + plotH - (v / maxVal) * plotH;
+  const xFor = i => padL + i * xStep;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">`;
+  for (let g = 0; g <= 2; g++) {
+    const gv = (maxVal / 2) * g;
+    const gy = yFor(gv);
+    svg += `<line x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}" stroke="var(--line)" stroke-width="1" />`;
+    svg += `<text x="${padL - 6}" y="${gy + 3}" font-size="9" text-anchor="end" fill="var(--faint)" font-family="IBM Plex Mono, monospace">${Math.round(gv)}</text>`;
+  }
+  series.forEach(s => {
+    const points = s.values.map((v, i) => `${xFor(i)},${yFor(v)}`).join(' ');
+    svg += `<polyline points="${points}" fill="none" stroke="${COLORS[s.person]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
+    s.values.forEach((v, i) => {
+      svg += `<circle cx="${xFor(i)}" cy="${yFor(v)}" r="2.5" fill="${COLORS[s.person]}"><title>${s.person}: ${v.toFixed(1)}h</title></circle>`;
+    });
+  });
+  buckets.forEach((b, i) => {
+    svg += `<text x="${xFor(i)}" y="${H - 6}" font-size="8" text-anchor="middle" fill="var(--faint)" font-family="IBM Plex Mono, monospace">${b.label}</text>`;
+  });
+  svg += `</svg>`;
+  container.innerHTML = svg;
+
+  legend.innerHTML = '';
+  PEOPLE.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    const swatch = document.createElement('span');
+    swatch.className = 'legend-swatch';
+    swatch.style.background = COLORS[p];
+    item.appendChild(swatch);
+    item.appendChild(document.createTextNode(p));
+    legend.appendChild(item);
+  });
+}
+
+function renderHeatmap() {
+  const wrap = document.getElementById('heatmap-rows');
+  if (!wrap) return;
+  const buckets = getWeekBuckets(8);
+  const startStr = buckets[0].start;
+  const endStr = buckets[buckets.length - 1].end;
+  const dowLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  wrap.innerHTML = '';
+
+  const dowRow = document.createElement('div');
+  dowRow.className = 'heatmap-dow-row';
+  dowRow.appendChild(document.createElement('span')).className = 'heatmap-name-spacer';
+  dowLabels.forEach(d => {
+    const el = document.createElement('span');
+    el.className = 'heatmap-dow-label';
+    el.textContent = d;
+    dowRow.appendChild(el);
+  });
+  wrap.appendChild(dowRow);
+
+  PEOPLE.forEach(p => {
+    const sums = [0, 0, 0, 0, 0, 0, 0]; // Mon..Sun
+    entries
+      .filter(e => e.person === p && e.start.slice(0, 10) >= startStr && e.start.slice(0, 10) <= endStr)
+      .forEach(e => {
+        const jsDow = new Date(e.start).getDay(); // 0 = Sunday
+        sums[jsDow === 0 ? 6 : jsDow - 1] += e.hours;
+      });
+    const avgs = sums.map(s => s / buckets.length);
+    const maxAvg = Math.max(1, ...avgs);
+
+    const row = document.createElement('div');
+    row.className = 'heatmap-row';
+    const name = document.createElement('span');
+    name.className = 'heatmap-name';
+    name.textContent = p;
+    row.appendChild(name);
+    avgs.forEach(v => {
+      const cell = document.createElement('span');
+      cell.className = 'heatmap-cell';
+      cell.style.background = v === 0 ? 'var(--track)' : hexToRgba(COLORS[p], 0.18 + 0.72 * (v / maxAvg));
+      cell.title = `${v.toFixed(1)}h avg`;
+      cell.textContent = v > 0 ? v.toFixed(1) : '';
+      row.appendChild(cell);
+    });
+    wrap.appendChild(row);
+  });
+}
 
 /* ---------------------------------------------------------------------
    Time off (vacation / recovery) and shift changes — persisted via the

@@ -256,22 +256,20 @@ function renderTimeTab() {
   renderRecentLog();
   renderHolidays();
   renderShiftList();
-  renderOvertimePanel();
 }
 
 /* ---------------------------------------------------------------------
-   Extra Hours — assumes an 8h/day expectation, Mon–Fri only. Weekends
-   never count against anyone; a date in a person's holidays (or an
-   "Everyone" holiday) doesn't either. Panel is hidden by default and
-   toggled per device via localStorage. Period is switchable between
-   this month (elapsed so far), last month (full), and year to date.
+   Stats tab — Work Ratio and Extra Hours, both driven by one shared
+   period toggle (this month so far / last month / year to date).
+   Extra Hours assumes an 8h/day default, overridden per person by any
+   shift changes; weekends and vacation never count against anyone,
+   recovery days subtract from the balance.
+   Work Ratio is actual ÷ expected hours as a %, a fairer side-by-side
+   comparison than raw totals since not everyone has the same shift.
    --------------------------------------------------------------------- */
-const OVERTIME_VISIBLE_KEY = 'punchboard-overtime-visible';
-const OVERTIME_PERIOD_KEY = 'punchboard-overtime-period';
-function isOvertimeVisible() { return localStorage.getItem(OVERTIME_VISIBLE_KEY) === 'true'; }
-function setOvertimeVisible(v) { localStorage.setItem(OVERTIME_VISIBLE_KEY, v ? 'true' : 'false'); }
-function getOvertimePeriod() { return localStorage.getItem(OVERTIME_PERIOD_KEY) || 'thisMonth'; }
-function setOvertimePeriod(p) { localStorage.setItem(OVERTIME_PERIOD_KEY, p); }
+const STATS_PERIOD_KEY = 'punchboard-stats-period';
+function getOvertimePeriod() { return localStorage.getItem(STATS_PERIOD_KEY) || 'thisMonth'; }
+function setOvertimePeriod(p) { localStorage.setItem(STATS_PERIOD_KEY, p); }
 
 function computeExpectedHours(startStr, endStr, person) {
   let expected = 0;
@@ -334,21 +332,53 @@ function getOvertimeRange(period, person) {
   return { start: iso(monthStart), end: todayISO(), label: 'this month so far' };
 }
 
-function renderOvertimePanel() {
-  const content = document.getElementById('overtime-content');
-  const btn = document.getElementById('overtime-toggle-btn');
-  if (!content || !btn) return;
-  const visible = isOvertimeVisible();
-  content.style.display = visible ? 'block' : 'none';
-  btn.textContent = visible ? 'Hide' : 'Show';
-  if (!visible) return;
+function renderWorkRatio(period) {
+  const rows = document.getElementById('ratio-rows');
+  if (!rows) return;
+  rows.innerHTML = '';
 
-  const period = getOvertimePeriod();
-  document.querySelectorAll('#overtime-period-toggle .toggle-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.period === period);
+  PEOPLE.forEach(p => {
+    const range = getOvertimeRange(period, p);
+    const { expected } = computeExpectedHours(range.start, range.end, p);
+    const actualHours = sumHoursInRange(p, range.start, range.end);
+    const pct = expected > 0 ? (actualHours / expected) * 100 : null;
+
+    const row = document.createElement('div');
+    row.className = 'hours-row';
+    const top = document.createElement('div');
+    top.className = 'hours-top-line';
+    const name = document.createElement('span');
+    name.className = 'hours-name';
+    name.textContent = p;
+    const val = document.createElement('span');
+    val.className = 'hours-value';
+    val.style.color = pct === null ? 'var(--faint)' : pct >= 95 ? '#2E9B5C' : pct >= 70 ? '#D9A441' : '#E0503C';
+    val.textContent = pct === null ? '—' : `${Math.round(pct)}%`;
+    top.appendChild(name);
+    top.appendChild(val);
+    row.appendChild(top);
+    if (pct !== null) {
+      const track = document.createElement('div');
+      track.className = 'bar-track';
+      track.style.marginBottom = '6px';
+      const fill = document.createElement('div');
+      fill.className = 'bar-fill';
+      fill.style.width = `${Math.min(pct, 150) / 150 * 100}%`;
+      fill.style.background = val.style.color;
+      track.appendChild(fill);
+      row.appendChild(track);
+    }
+    const sub = document.createElement('div');
+    sub.className = 'leader-meta';
+    sub.textContent = `${actualHours.toFixed(1)}h logged vs ${expected.toFixed(1)}h expected (${range.label})`;
+    row.appendChild(sub);
+    rows.appendChild(row);
   });
+}
 
+function renderOvertimeRows(period) {
   const rows = document.getElementById('overtime-rows');
+  if (!rows) return;
   rows.innerHTML = '';
 
   PEOPLE.forEach(p => {
@@ -380,14 +410,21 @@ function renderOvertimePanel() {
     rows.appendChild(row);
   });
 }
-document.getElementById('overtime-toggle-btn').onclick = () => {
-  setOvertimeVisible(!isOvertimeVisible());
-  renderOvertimePanel();
-};
-document.querySelectorAll('#overtime-period-toggle .toggle-btn').forEach(b => {
+
+function renderStatsTab() {
+  const toggle = document.getElementById('stats-period-toggle');
+  if (!toggle) return;
+  const period = getOvertimePeriod();
+  toggle.querySelectorAll('.toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.period === period);
+  });
+  renderWorkRatio(period);
+  renderOvertimeRows(period);
+}
+document.getElementById('stats-period-toggle').querySelectorAll('.toggle-btn').forEach(b => {
   b.onclick = () => {
     setOvertimePeriod(b.dataset.period);
-    renderOvertimePanel();
+    renderStatsTab();
   };
 });
 
@@ -491,7 +528,7 @@ function renderHolidays() {
       await saveHolidays(updated);
       renderHolidays();
       renderCalendar();
-      renderOvertimePanel();
+      renderStatsTab();
     };
     row.appendChild(del);
     wrap.appendChild(row);
@@ -525,7 +562,7 @@ function renderShiftList() {
       const updated = getMandatedHours().filter(x => x.id !== m.id);
       await saveMandatedHours(updated);
       renderShiftList();
-      renderOvertimePanel();
+      renderStatsTab();
     };
     row.appendChild(del);
     wrap.appendChild(row);
@@ -555,7 +592,7 @@ document.getElementById('add-entry-btn').onclick = async () => {
     const entry = { id: `m-${Date.now()}`, person, hoursPerDay: hours, effectiveFrom };
     await saveMandatedHours([...getMandatedHours(), entry]);
     renderShiftList();
-    renderOvertimePanel();
+    renderStatsTab();
     return;
   }
 
@@ -574,7 +611,7 @@ document.getElementById('add-entry-btn').onclick = async () => {
   labelInput.value = '';
   renderHolidays();
   renderCalendar();
-  renderOvertimePanel();
+  renderStatsTab();
 };
 
 function setLeaderboardViewMode(mode) {

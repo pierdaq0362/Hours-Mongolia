@@ -43,6 +43,7 @@
 
   <div class="main-tabs">
     <div class="main-tab active" id="tab-time">Time Clock</div>
+    <div class="main-tab" id="tab-stats">📊 Stats</div>
     <div class="main-tab" id="tab-mood">Mood Tracker<span class="tab-dot" id="mood-tab-dot"></span></div>
     <div class="main-tab" id="tab-awards">Crew Awards</div>
     <div class="main-tab" id="tab-bets">🎯 Wager Board</div>
@@ -70,22 +71,6 @@
         </div>
       </div>
       <div id="leaderboard"></div>
-    </section>
-
-    <section class="panel">
-      <div class="leader-header-row">
-        <div class="panel-label">EXTRA HOURS</div>
-        <button class="archive-btn" id="overtime-toggle-btn">Show</button>
-      </div>
-      <div class="panel-sub">Mon–Fri only — weekends and vacation don't count against anyone; recovery days subtract from the balance.</div>
-      <div id="overtime-content" style="display:none;">
-        <div class="toggle-group" id="overtime-period-toggle" style="margin-bottom:14px;">
-          <button class="toggle-btn active" data-period="thisMonth">This month</button>
-          <button class="toggle-btn" data-period="lastMonth">Last month</button>
-          <button class="toggle-btn" data-period="ytd">Year to date</button>
-        </div>
-        <div id="overtime-rows"></div>
-      </div>
     </section>
 
     <section class="panel">
@@ -179,6 +164,32 @@
     <section class="panel">
       <div class="panel-label">RECENT PUNCHES</div>
       <div id="recent-log"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== STATS ===================== -->
+  <div class="view" id="view-stats">
+
+    <section class="panel">
+      <div class="panel-label">PERIOD</div>
+      <div class="toggle-group" id="stats-period-toggle">
+        <button class="toggle-btn active" data-period="thisMonth">This month</button>
+        <button class="toggle-btn" data-period="lastMonth">Last month</button>
+        <button class="toggle-btn" data-period="ytd">Year to date</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">WORK RATIO</div>
+      <div class="panel-sub">Hours logged as a % of what each person is expected to work — a fairer comparison since shifts differ.</div>
+      <div id="ratio-rows"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">EXTRA HOURS</div>
+      <div class="panel-sub">Mon–Fri only — weekends and vacation don't count against anyone; recovery days subtract from the balance.</div>
+      <div id="overtime-rows"></div>
     </section>
 
   </div>

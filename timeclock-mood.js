@@ -463,19 +463,49 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function linearRegression(values) {
+  const n = values.length;
+  const sumX = values.reduce((s, _, i) => s + i, 0);
+  const sumY = values.reduce((s, v) => s + v, 0);
+  const sumXY = values.reduce((s, v, i) => s + i * v, 0);
+  const sumXX = values.reduce((s, _, i) => s + i * i, 0);
+  const denom = n * sumXX - sumX * sumX;
+  const slope = denom === 0 ? 0 : (n * sumXY - sumX * sumY) / denom;
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
+}
+
+const FORECAST_WEEKS = 4;
+
 function renderTrendChart() {
   const container = document.getElementById('trend-chart');
   const legend = document.getElementById('trend-legend');
+  const forecastEl = document.getElementById('trend-forecast');
   if (!container) return;
   const buckets = getWeekBuckets(8);
-  const series = PEOPLE.map(p => ({
-    person: p,
-    values: buckets.map(b => sumHoursInRange(p, b.start, b.end)),
-  }));
-  const maxVal = Math.max(5, ...series.flatMap(s => s.values));
+  const hasAnyData = PEOPLE.some(p => buckets.some(b => sumHoursInRange(p, b.start, b.end) > 0));
+
+  const futureLabels = [];
+  for (let i = 1; i <= FORECAST_WEEKS; i++) {
+    const d = mondayOf(new Date());
+    d.setDate(d.getDate() + i * 7);
+    futureLabels.push(d.toLocaleDateString([], { day: '2-digit', month: 'short' }));
+  }
+
+  const series = PEOPLE.map(p => {
+    const values = buckets.map(b => sumHoursInRange(p, b.start, b.end));
+    const { slope, intercept } = linearRegression(values);
+    const forecast = hasAnyData
+      ? Array.from({ length: FORECAST_WEEKS }, (_, i) => Math.max(0, slope * (buckets.length + i) + intercept))
+      : [];
+    return { person: p, values, forecast, slope };
+  });
+
+  const totalPoints = buckets.length + (hasAnyData ? FORECAST_WEEKS : 0);
+  const maxVal = Math.max(5, ...series.flatMap(s => s.values.concat(s.forecast)));
   const W = 600, H = 180, padL = 32, padR = 10, padT = 10, padB = 22;
   const plotW = W - padL - padR, plotH = H - padT - padB;
-  const xStep = buckets.length > 1 ? plotW / (buckets.length - 1) : 0;
+  const xStep = totalPoints > 1 ? plotW / (totalPoints - 1) : 0;
   const yFor = v => padT + plotH - (v / maxVal) * plotH;
   const xFor = i => padL + i * xStep;
 
@@ -486,16 +516,34 @@ function renderTrendChart() {
     svg += `<line x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}" stroke="var(--line)" stroke-width="1" />`;
     svg += `<text x="${padL - 6}" y="${gy + 3}" font-size="9" text-anchor="end" fill="var(--faint)" font-family="IBM Plex Mono, monospace">${Math.round(gv)}</text>`;
   }
+  if (hasAnyData) {
+    const bx = xFor(buckets.length - 1);
+    svg += `<line x1="${bx}" y1="${padT}" x2="${bx}" y2="${padT + plotH}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 3" />`;
+  }
   series.forEach(s => {
     const points = s.values.map((v, i) => `${xFor(i)},${yFor(v)}`).join(' ');
     svg += `<polyline points="${points}" fill="none" stroke="${COLORS[s.person]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
     s.values.forEach((v, i) => {
       svg += `<circle cx="${xFor(i)}" cy="${yFor(v)}" r="2.5" fill="${COLORS[s.person]}"><title>${s.person}: ${v.toFixed(1)}h</title></circle>`;
     });
+    if (s.forecast.length) {
+      const fPoints = [`${xFor(buckets.length - 1)},${yFor(s.values[s.values.length - 1])}`]
+        .concat(s.forecast.map((v, i) => `${xFor(buckets.length + i)},${yFor(v)}`))
+        .join(' ');
+      svg += `<polyline points="${fPoints}" fill="none" stroke="${COLORS[s.person]}" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round" stroke-linecap="round" opacity="0.6" />`;
+      s.forecast.forEach((v, i) => {
+        svg += `<circle cx="${xFor(buckets.length + i)}" cy="${yFor(v)}" r="2.5" fill="var(--bg, #fff)" stroke="${COLORS[s.person]}" stroke-width="1.5" opacity="0.8"><title>${s.person}: ~${v.toFixed(1)}h (forecast)</title></circle>`;
+      });
+    }
   });
   buckets.forEach((b, i) => {
     svg += `<text x="${xFor(i)}" y="${H - 6}" font-size="8" text-anchor="middle" fill="var(--faint)" font-family="IBM Plex Mono, monospace">${b.label}</text>`;
   });
+  if (hasAnyData) {
+    futureLabels.forEach((label, i) => {
+      svg += `<text x="${xFor(buckets.length + i)}" y="${H - 6}" font-size="8" font-style="italic" text-anchor="middle" fill="var(--faint)" font-family="IBM Plex Mono, monospace">${label}</text>`;
+    });
+  }
   svg += `</svg>`;
   container.innerHTML = svg;
 
@@ -509,6 +557,28 @@ function renderTrendChart() {
     item.appendChild(swatch);
     item.appendChild(document.createTextNode(p));
     legend.appendChild(item);
+  });
+  const dashedNote = document.createElement('div');
+  dashedNote.className = 'legend-item';
+  dashedNote.style.color = 'var(--faint)';
+  dashedNote.textContent = hasAnyData ? '- - - forecast (dashed)' : '';
+  legend.appendChild(dashedNote);
+
+  if (!forecastEl) return;
+  if (!hasAnyData) {
+    forecastEl.innerHTML = '<div class="empty-state">Not enough data yet for a forecast.</div>';
+    return;
+  }
+  forecastEl.innerHTML = '';
+  series.forEach(s => {
+    const weeklyTotal = s.forecast.reduce((a, b) => a + b, 0);
+    const trendLabel = Math.abs(s.slope) < 0.3 ? 'steady' : s.slope > 0 ? 'trending up' : 'trending down';
+    const arrow = Math.abs(s.slope) < 0.3 ? '→' : s.slope > 0 ? '↑' : '↓';
+    const row = document.createElement('div');
+    row.className = 'leader-meta';
+    row.style.marginBottom = '3px';
+    row.innerHTML = `<strong style="color:${COLORS[s.person]}">${s.person}</strong> ${arrow} ${trendLabel} (${s.slope >= 0 ? '+' : ''}${s.slope.toFixed(1)}h/week) — projected ~${weeklyTotal.toFixed(0)}h over the next ${FORECAST_WEEKS} weeks`;
+    forecastEl.appendChild(row);
   });
 }
 

@@ -19,6 +19,7 @@ async function clockOut(person) {
     entries.unshift(entry);
     renderTimeTab();
     try { await apiAddEntry(entry); } catch (e) { console.error('Failed to save entry', e); }
+    try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
   } else {
     renderPersonRow();
   }
@@ -37,6 +38,7 @@ async function addManualEntry() {
   entries.unshift(entry);
   renderTimeTab();
   try { await apiAddEntry(entry); } catch (e) { console.error('Failed to save entry', e); }
+  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 }
 async function deleteEntry(id) {
   entries = entries.filter((e) => e.id !== id);
@@ -66,11 +68,11 @@ function renderPersonRow() {
   PEOPLE.forEach((person) => {
     const shiftStart = activeShifts[person];
     const isActive = !!shiftStart;
-    const isEggMaster = hasAllEggs(person);
+    const isBadgeMaster = hasAllBadges(person);
     const card = document.createElement('div');
     card.className = 'person-card'
       + (person === whoAmI ? ' is-you' : '')
-      + (isEggMaster && person === whoAmI ? ' egg-master-mine' : '');
+      + (isBadgeMaster && person === whoAmI ? ' egg-master-mine' : '');
     card.style.borderColor = isActive ? COLORS[person] : '#E4DDD0';
     card.style.background = isActive ? `${COLORS[person]}0D` : '#FFFFFF';
 
@@ -79,15 +81,13 @@ function renderPersonRow() {
     const dot = document.createElement('span');
     dot.className = 'dot' + (isActive ? ' pulsing' : '');
     dot.style.background = COLORS[person];
-    dot.style.cursor = 'pointer';
-    dot.addEventListener('click', (ev) => { ev.stopPropagation(); handleDotTap(person); });
     nameDiv.appendChild(dot);
     nameDiv.appendChild(document.createTextNode(person));
-    if (isEggMaster) {
+    if (isBadgeMaster) {
       const medal = document.createElement('span');
       medal.className = 'egg-medal';
       medal.textContent = '🥇';
-      medal.title = person === whoAmI ? '10/10 secrets found' : 'Found every secret in the app';
+      medal.title = person === whoAmI ? '10/10 badges earned' : 'Earned every badge in the app';
       nameDiv.appendChild(medal);
     }
     if (settings.birthdayMode === 'true' && settings.birthdayPerson === person) {
@@ -104,10 +104,10 @@ function renderPersonRow() {
       nameDiv.appendChild(badge);
     }
     card.appendChild(nameDiv);
-    if (isEggMaster && person === whoAmI) {
+    if (isBadgeMaster && person === whoAmI) {
       const detail = document.createElement('div');
       detail.className = 'egg-master-detail';
-      detail.textContent = '🥇 10/10 secrets found';
+      detail.textContent = '🥇 10/10 badges earned';
       card.appendChild(detail);
     }
 
@@ -256,20 +256,22 @@ function renderTimeTab() {
   renderRecentLog();
   renderHolidays();
   renderShiftList();
+  renderOvertimePanel();
 }
 
 /* ---------------------------------------------------------------------
-   Stats tab — Work Ratio and Extra Hours, both driven by one shared
-   period toggle (this month so far / last month / year to date).
-   Extra Hours assumes an 8h/day default, overridden per person by any
-   shift changes; weekends and vacation never count against anyone,
-   recovery days subtract from the balance.
-   Work Ratio is actual ÷ expected hours as a %, a fairer side-by-side
-   comparison than raw totals since not everyone has the same shift.
+   Extra Hours — assumes an 8h/day expectation, Mon–Fri only. Weekends
+   never count against anyone; a date in a person's holidays (or an
+   "Everyone" holiday) doesn't either. Panel is hidden by default and
+   toggled per device via localStorage. Period is switchable between
+   this month (elapsed so far), last month (full), and year to date.
    --------------------------------------------------------------------- */
-const STATS_PERIOD_KEY = 'punchboard-stats-period';
-function getOvertimePeriod() { return localStorage.getItem(STATS_PERIOD_KEY) || 'thisMonth'; }
-function setOvertimePeriod(p) { localStorage.setItem(STATS_PERIOD_KEY, p); }
+const OVERTIME_VISIBLE_KEY = 'punchboard-overtime-visible';
+const OVERTIME_PERIOD_KEY = 'punchboard-overtime-period';
+function isOvertimeVisible() { return localStorage.getItem(OVERTIME_VISIBLE_KEY) === 'true'; }
+function setOvertimeVisible(v) { localStorage.setItem(OVERTIME_VISIBLE_KEY, v ? 'true' : 'false'); }
+function getOvertimePeriod() { return localStorage.getItem(OVERTIME_PERIOD_KEY) || 'thisMonth'; }
+function setOvertimePeriod(p) { localStorage.setItem(OVERTIME_PERIOD_KEY, p); }
 
 function computeExpectedHours(startStr, endStr, person) {
   let expected = 0;
@@ -310,10 +312,6 @@ function getOvertimeRange(period, person) {
   if (period === 'ytd') {
     const yearStartStr = iso(new Date(now.getFullYear(), 0, 1));
     const todayStr = todayISO();
-    // Don't count expected days before this person's very first logged
-    // entry ever, if that happens to fall after Jan 1 — otherwise someone
-    // who only started using the app in June looks "behind" for the
-    // five months before it existed for them.
     const personEntries = entries.filter(e => e.person === person);
     if (personEntries.length === 0) {
       return { start: todayStr, end: todayStr, label: 'year to date (no entries yet)' };
@@ -332,53 +330,21 @@ function getOvertimeRange(period, person) {
   return { start: iso(monthStart), end: todayISO(), label: 'this month so far' };
 }
 
-function renderWorkRatio(period) {
-  const rows = document.getElementById('ratio-rows');
-  if (!rows) return;
-  rows.innerHTML = '';
+function renderOvertimePanel() {
+  const content = document.getElementById('overtime-content');
+  const btn = document.getElementById('overtime-toggle-btn');
+  if (!content || !btn) return;
+  const visible = isOvertimeVisible();
+  content.style.display = visible ? 'block' : 'none';
+  btn.textContent = visible ? 'Hide' : 'Show';
+  if (!visible) return;
 
-  PEOPLE.forEach(p => {
-    const range = getOvertimeRange(period, p);
-    const { expected } = computeExpectedHours(range.start, range.end, p);
-    const actualHours = sumHoursInRange(p, range.start, range.end);
-    const pct = expected > 0 ? (actualHours / expected) * 100 : null;
-
-    const row = document.createElement('div');
-    row.className = 'hours-row';
-    const top = document.createElement('div');
-    top.className = 'hours-top-line';
-    const name = document.createElement('span');
-    name.className = 'hours-name';
-    name.textContent = p;
-    const val = document.createElement('span');
-    val.className = 'hours-value';
-    val.style.color = pct === null ? 'var(--faint)' : pct <= 100 ? '#2E9B5C' : pct <= 115 ? '#D9A441' : '#E0503C';
-    val.textContent = pct === null ? '—' : `${Math.round(pct)}%`;
-    top.appendChild(name);
-    top.appendChild(val);
-    row.appendChild(top);
-    if (pct !== null) {
-      const track = document.createElement('div');
-      track.className = 'bar-track';
-      track.style.marginBottom = '6px';
-      const fill = document.createElement('div');
-      fill.className = 'bar-fill';
-      fill.style.width = `${Math.min(pct, 150) / 150 * 100}%`;
-      fill.style.background = val.style.color;
-      track.appendChild(fill);
-      row.appendChild(track);
-    }
-    const sub = document.createElement('div');
-    sub.className = 'leader-meta';
-    sub.textContent = `${actualHours.toFixed(1)}h logged vs ${expected.toFixed(1)}h expected (${range.label})`;
-    row.appendChild(sub);
-    rows.appendChild(row);
+  const period = getOvertimePeriod();
+  document.querySelectorAll('#overtime-period-toggle .toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.period === period);
   });
-}
 
-function renderOvertimeRows(period) {
   const rows = document.getElementById('overtime-rows');
-  if (!rows) return;
   rows.innerHTML = '';
 
   PEOPLE.forEach(p => {
@@ -410,226 +376,16 @@ function renderOvertimeRows(period) {
     rows.appendChild(row);
   });
 }
-
-function renderStatsTab() {
-  const toggle = document.getElementById('stats-period-toggle');
-  if (!toggle) return;
-  const period = getOvertimePeriod();
-  toggle.querySelectorAll('.toggle-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.period === period);
-  });
-  renderWorkRatio(period);
-  renderOvertimeRows(period);
-  renderTrendChart();
-  renderHeatmap();
-}
-document.getElementById('stats-period-toggle').querySelectorAll('.toggle-btn').forEach(b => {
+document.getElementById('overtime-toggle-btn').onclick = () => {
+  setOvertimeVisible(!isOvertimeVisible());
+  renderOvertimePanel();
+};
+document.querySelectorAll('#overtime-period-toggle .toggle-btn').forEach(b => {
   b.onclick = () => {
     setOvertimePeriod(b.dataset.period);
-    renderStatsTab();
+    renderOvertimePanel();
   };
 });
-
-/* ---------------------------------------------------------------------
-   Hours Trend + Day-of-Week Heatmap — both use a fixed trailing 8-week
-   window (Monday–Sunday buckets, current week included and partial),
-   independent of the Work Ratio / Extra Hours period toggle above.
-   --------------------------------------------------------------------- */
-function mondayOf(date) {
-  const d = new Date(date);
-  const day = d.getDay(); // 0 = Sunday
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-function getWeekBuckets(n) {
-  const pad = x => String(x).padStart(2, '0');
-  const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const thisMonday = mondayOf(new Date());
-  const buckets = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const start = new Date(thisMonday);
-    start.setDate(start.getDate() - i * 7);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
-    buckets.push({ start: iso(start), end: iso(end), label: start.toLocaleDateString([], { day: '2-digit', month: 'short' }) });
-  }
-  return buckets;
-}
-function hexToRgba(hex, alpha) {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-function linearRegression(values) {
-  const n = values.length;
-  const sumX = values.reduce((s, _, i) => s + i, 0);
-  const sumY = values.reduce((s, v) => s + v, 0);
-  const sumXY = values.reduce((s, v, i) => s + i * v, 0);
-  const sumXX = values.reduce((s, _, i) => s + i * i, 0);
-  const denom = n * sumXX - sumX * sumX;
-  const slope = denom === 0 ? 0 : (n * sumXY - sumX * sumY) / denom;
-  const intercept = (sumY - slope * sumX) / n;
-  return { slope, intercept };
-}
-
-const FORECAST_WEEKS = 4;
-
-function renderTrendChart() {
-  const container = document.getElementById('trend-chart');
-  const legend = document.getElementById('trend-legend');
-  const forecastEl = document.getElementById('trend-forecast');
-  if (!container) return;
-  const buckets = getWeekBuckets(8);
-  const hasAnyData = PEOPLE.some(p => buckets.some(b => sumHoursInRange(p, b.start, b.end) > 0));
-
-  const futureLabels = [];
-  for (let i = 1; i <= FORECAST_WEEKS; i++) {
-    const d = mondayOf(new Date());
-    d.setDate(d.getDate() + i * 7);
-    futureLabels.push(d.toLocaleDateString([], { day: '2-digit', month: 'short' }));
-  }
-
-  const series = PEOPLE.map(p => {
-    const values = buckets.map(b => sumHoursInRange(p, b.start, b.end));
-    const { slope, intercept } = linearRegression(values);
-    const forecast = hasAnyData
-      ? Array.from({ length: FORECAST_WEEKS }, (_, i) => Math.max(0, slope * (buckets.length + i) + intercept))
-      : [];
-    return { person: p, values, forecast, slope };
-  });
-
-  const totalPoints = buckets.length + (hasAnyData ? FORECAST_WEEKS : 0);
-  const maxVal = Math.max(5, ...series.flatMap(s => s.values.concat(s.forecast)));
-  const W = 600, H = 180, padL = 32, padR = 10, padT = 10, padB = 22;
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-  const xStep = totalPoints > 1 ? plotW / (totalPoints - 1) : 0;
-  const yFor = v => padT + plotH - (v / maxVal) * plotH;
-  const xFor = i => padL + i * xStep;
-
-  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">`;
-  for (let g = 0; g <= 2; g++) {
-    const gv = (maxVal / 2) * g;
-    const gy = yFor(gv);
-    svg += `<line x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}" stroke="var(--line)" stroke-width="1" />`;
-    svg += `<text x="${padL - 6}" y="${gy + 3}" font-size="9" text-anchor="end" fill="var(--faint)" font-family="IBM Plex Mono, monospace">${Math.round(gv)}</text>`;
-  }
-  if (hasAnyData) {
-    const bx = xFor(buckets.length - 1);
-    svg += `<line x1="${bx}" y1="${padT}" x2="${bx}" y2="${padT + plotH}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 3" />`;
-  }
-  series.forEach(s => {
-    const points = s.values.map((v, i) => `${xFor(i)},${yFor(v)}`).join(' ');
-    svg += `<polyline points="${points}" fill="none" stroke="${COLORS[s.person]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
-    s.values.forEach((v, i) => {
-      svg += `<circle cx="${xFor(i)}" cy="${yFor(v)}" r="2.5" fill="${COLORS[s.person]}"><title>${s.person}: ${v.toFixed(1)}h</title></circle>`;
-    });
-    if (s.forecast.length) {
-      const fPoints = [`${xFor(buckets.length - 1)},${yFor(s.values[s.values.length - 1])}`]
-        .concat(s.forecast.map((v, i) => `${xFor(buckets.length + i)},${yFor(v)}`))
-        .join(' ');
-      svg += `<polyline points="${fPoints}" fill="none" stroke="${COLORS[s.person]}" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round" stroke-linecap="round" opacity="0.6" />`;
-      s.forecast.forEach((v, i) => {
-        svg += `<circle cx="${xFor(buckets.length + i)}" cy="${yFor(v)}" r="2.5" fill="var(--bg, #fff)" stroke="${COLORS[s.person]}" stroke-width="1.5" opacity="0.8"><title>${s.person}: ~${v.toFixed(1)}h (forecast)</title></circle>`;
-      });
-    }
-  });
-  buckets.forEach((b, i) => {
-    svg += `<text x="${xFor(i)}" y="${H - 6}" font-size="8" text-anchor="middle" fill="var(--faint)" font-family="IBM Plex Mono, monospace">${b.label}</text>`;
-  });
-  if (hasAnyData) {
-    futureLabels.forEach((label, i) => {
-      svg += `<text x="${xFor(buckets.length + i)}" y="${H - 6}" font-size="8" font-style="italic" text-anchor="middle" fill="var(--faint)" font-family="IBM Plex Mono, monospace">${label}</text>`;
-    });
-  }
-  svg += `</svg>`;
-  container.innerHTML = svg;
-
-  legend.innerHTML = '';
-  PEOPLE.forEach(p => {
-    const item = document.createElement('div');
-    item.className = 'legend-item';
-    const swatch = document.createElement('span');
-    swatch.className = 'legend-swatch';
-    swatch.style.background = COLORS[p];
-    item.appendChild(swatch);
-    item.appendChild(document.createTextNode(p));
-    legend.appendChild(item);
-  });
-  const dashedNote = document.createElement('div');
-  dashedNote.className = 'legend-item';
-  dashedNote.style.color = 'var(--faint)';
-  dashedNote.textContent = hasAnyData ? '- - - forecast (dashed)' : '';
-  legend.appendChild(dashedNote);
-
-  if (!forecastEl) return;
-  if (!hasAnyData) {
-    forecastEl.innerHTML = '<div class="empty-state">Not enough data yet for a forecast.</div>';
-    return;
-  }
-  forecastEl.innerHTML = '';
-  series.forEach(s => {
-    const weeklyTotal = s.forecast.reduce((a, b) => a + b, 0);
-    const trendLabel = Math.abs(s.slope) < 0.3 ? 'steady' : s.slope > 0 ? 'trending up' : 'trending down';
-    const arrow = Math.abs(s.slope) < 0.3 ? '→' : s.slope > 0 ? '↑' : '↓';
-    const row = document.createElement('div');
-    row.className = 'leader-meta';
-    row.style.marginBottom = '3px';
-    row.innerHTML = `<strong style="color:${COLORS[s.person]}">${s.person}</strong> ${arrow} ${trendLabel} (${s.slope >= 0 ? '+' : ''}${s.slope.toFixed(1)}h/week) — projected ~${weeklyTotal.toFixed(0)}h over the next ${FORECAST_WEEKS} weeks`;
-    forecastEl.appendChild(row);
-  });
-}
-
-function renderHeatmap() {
-  const wrap = document.getElementById('heatmap-rows');
-  if (!wrap) return;
-  const buckets = getWeekBuckets(8);
-  const startStr = buckets[0].start;
-  const endStr = buckets[buckets.length - 1].end;
-  const dowLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  wrap.innerHTML = '';
-
-  const dowRow = document.createElement('div');
-  dowRow.className = 'heatmap-dow-row';
-  dowRow.appendChild(document.createElement('span')).className = 'heatmap-name-spacer';
-  dowLabels.forEach(d => {
-    const el = document.createElement('span');
-    el.className = 'heatmap-dow-label';
-    el.textContent = d;
-    dowRow.appendChild(el);
-  });
-  wrap.appendChild(dowRow);
-
-  PEOPLE.forEach(p => {
-    const sums = [0, 0, 0, 0, 0, 0, 0]; // Mon..Sun
-    entries
-      .filter(e => e.person === p && e.start.slice(0, 10) >= startStr && e.start.slice(0, 10) <= endStr)
-      .forEach(e => {
-        const jsDow = new Date(e.start).getDay(); // 0 = Sunday
-        sums[jsDow === 0 ? 6 : jsDow - 1] += e.hours;
-      });
-    const avgs = sums.map(s => s / buckets.length);
-    const maxAvg = Math.max(1, ...avgs);
-
-    const row = document.createElement('div');
-    row.className = 'heatmap-row';
-    const name = document.createElement('span');
-    name.className = 'heatmap-name';
-    name.textContent = p;
-    row.appendChild(name);
-    avgs.forEach(v => {
-      const cell = document.createElement('span');
-      cell.className = 'heatmap-cell';
-      cell.style.background = v === 0 ? 'var(--track)' : hexToRgba(COLORS[p], 0.18 + 0.72 * (v / maxAvg));
-      cell.title = `${v.toFixed(1)}h avg`;
-      cell.textContent = v > 0 ? v.toFixed(1) : '';
-      row.appendChild(cell);
-    });
-    wrap.appendChild(row);
-  });
-}
 
 /* ---------------------------------------------------------------------
    Time off (vacation / recovery) and shift changes — persisted via the
@@ -731,7 +487,7 @@ function renderHolidays() {
       await saveHolidays(updated);
       renderHolidays();
       renderCalendar();
-      renderStatsTab();
+      renderOvertimePanel();
     };
     row.appendChild(del);
     wrap.appendChild(row);
@@ -765,7 +521,7 @@ function renderShiftList() {
       const updated = getMandatedHours().filter(x => x.id !== m.id);
       await saveMandatedHours(updated);
       renderShiftList();
-      renderStatsTab();
+      renderOvertimePanel();
     };
     row.appendChild(del);
     wrap.appendChild(row);
@@ -795,7 +551,7 @@ document.getElementById('add-entry-btn').onclick = async () => {
     const entry = { id: `m-${Date.now()}`, person, hoursPerDay: hours, effectiveFrom };
     await saveMandatedHours([...getMandatedHours(), entry]);
     renderShiftList();
-    renderStatsTab();
+    renderOvertimePanel();
     return;
   }
 
@@ -814,7 +570,7 @@ document.getElementById('add-entry-btn').onclick = async () => {
   labelInput.value = '';
   renderHolidays();
   renderCalendar();
-  renderStatsTab();
+  renderOvertimePanel();
 };
 
 function setLeaderboardViewMode(mode) {
@@ -918,6 +674,7 @@ document.getElementById('save-checkin-btn').onclick = async () => {
   moodEntries.push(entry);
   renderMoodTab();
   try { await apiAddMood(entry); } catch (e) { console.error('Failed to save mood', e); }
+  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 };
 
 function renderMini(key, containerId) {
@@ -953,6 +710,7 @@ document.getElementById('backfill-btn').onclick = async () => {
   renderMini('happiness', 'mini-happiness');
   renderMoodTab();
   try { await apiAddMood(entry); } catch (e) { console.error('Failed to save mood', e); }
+  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 };
 
 function renderMoodFilterChips() {

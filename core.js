@@ -1,7 +1,8 @@
+
 /* =========================================================================
    CONFIG — paste your Apps Script Web App URL below between the quotes.
    ========================================================================= */
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyZcAEDyZVNAJHuKaAI9DkHn_2I5nd2hILj_8cbEvKLrJdf-UmHAr968-DNB8wvAZ2N/exec';
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwm1XTMSf_1sz_KmwvoEEbllJxkZLIVM1wvIcB81vaGJJsA_4KKuO9dLBCLrdWmxebP/exec';
 
 const PEOPLE = ['Luigi', 'Juan', 'Sergio'];
 const COLORS = { Luigi: '#D97757', Juan: '#4A7C7C', Sergio: '#8B6F47' };
@@ -198,39 +199,6 @@ document.getElementById('theme-modal-close-btn').onclick = () => {
 };
 applyTheme(getTheme()); // re-apply after DOM ready (head script already set data-theme early to avoid a flash)
 
-/* =========================================================================
-   SECRETS — 10 hidden easter eggs. No hints anywhere in the normal UI;
-   each has a different unlock method on purpose. The 🥚 EGGS drawer on
-   the right lets anyone check progress (theirs and the crew's) and
-   optionally reveal a hint per egg, without spelling out the mechanism
-   unless asked. If every person finds every egg, a permanent crew-wide
-   badge unlocks — see checkAllEggsMastered().
-
-   1. Tap the app title 7 times fast.
-   2. Classic Konami code on a keyboard: ↑ ↑ ↓ ↓ ← → ← → B A
-   3. Save a mood check-in with Energy 5, Stress 1, Happiness 5.
-   4. Tap the crew color dots on Time Clock in the order:
-      Sergio → Luigi → Juan.
-   5. Tap the 🎨 theme button 4 times fast.
-   6. Leave the app open and untouched for 60 seconds.
-   7. Tap the Spain champions banner 3 times fast.
-   8. Type the word "campeones" anywhere on the page.
-   9. Tap your "You're ___" identity line in the header 5 times fast.
-   10. Type the word "cheers" anywhere on the page.
-   ========================================================================= */
-const EGG_DEFINITIONS = [
-  { key: 'title-tap',      name: 'Motormouth',   hint: "Something about the app's own name wants attention. Multiple times. Quickly." },
-  { key: 'konami',         name: 'Old School',   hint: "Old-school gamers might recognize this one. Needs a physical keyboard." },
-  { key: 'flawless-checkin', name: 'Flawless',    hint: "Today's mood check-in, with every slider pushed exactly the right direction." },
-  { key: 'dot-sequence',   name: 'Roll Call',    hint: "The colored dots on Time Clock know an order. Sergio goes first." },
-  { key: 'theme-tap',      name: 'Prism',        hint: "The little palette icon up top has more to say if you bother it enough, fast enough." },
-  { key: 'idle',           name: 'Statue',       hint: "Sometimes the trick is doing absolutely nothing for a while." },
-  { key: 'champion-tap',   name: 'Olé Olé Olé',  hint: "That red and yellow banner isn't just for looking at. Tap it. A few times, quickly." },
-  { key: 'campeones-word', name: 'Campeones',    hint: "Somebody's speaking Spanish. Try typing their word for 'champions' — anywhere on the page." },
-  { key: 'whoami-tap',     name: 'Self Aware',   hint: "That little line under the title that says who you are — it responds to attention too." },
-  { key: 'cheers-word',    name: 'Cheers',       hint: "A friendly toast, typed anywhere on the page, might do something." },
-];
-
 function spawnConfetti() {
   const colors = [COLORS.Luigi, COLORS.Juan, COLORS.Sergio, '#F2A03D', '#2E9B5C'];
   for (let i = 0; i < 40; i++) {
@@ -244,63 +212,109 @@ function spawnConfetti() {
     setTimeout(() => piece.remove(), 4000);
   }
 }
-function spawnEmojiShower(emojis) {
-  for (let i = 0; i < 30; i++) {
-    const piece = document.createElement('div');
-    piece.className = 'confetti-piece emoji-piece';
-    piece.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-    piece.style.left = `${Math.random() * 100}vw`;
-    piece.style.animationDuration = `${2 + Math.random() * 1.5}s`;
-    piece.style.animationDelay = `${Math.random() * 0.4}s`;
-    document.body.appendChild(piece);
-    setTimeout(() => piece.remove(), 4000);
+
+/* =========================================================================
+   BADGES — replaces the old hidden-easter-egg system. Instead of secret
+   taps/keywords nobody ever stumbled onto, these are visible, ongoing
+   achievements computed straight from real app data (hours, streaks,
+   beers, check-ins). Progress is always visible in the drawer, so
+   there's something to work toward instead of a one-time secret.
+   Persisted via the same generic settings store as everything else.
+   ========================================================================= */
+function longestMoodStreak(person) {
+  const dates = Object.keys(personMoodMap(person)).sort();
+  let longest = 0, current = 0, prev = null;
+  dates.forEach(d => {
+    current = (prev && Math.round((new Date(d) - new Date(prev)) / 86400000) === 1) ? current + 1 : 1;
+    longest = Math.max(longest, current);
+    prev = d;
+  });
+  return longest;
+}
+function personTotalHours(p) {
+  return entries.filter(e => e.person === p).reduce((s, e) => s + e.hours, 0);
+}
+function personDaysWorked(p) {
+  return new Set(entries.filter(e => e.person === p).map(e => e.start.slice(0, 10))).size;
+}
+function personCheckinCount(p) {
+  return Object.keys(personMoodMap(p)).length;
+}
+function personCalledWorldCup(p) {
+  return (typeof getWorldCupHistory === 'function' && getWorldCupHistory().some(h => h.callers.includes(p))) ? 1 : 0;
+}
+
+const BADGE_DEFINITIONS = [
+  { key: 'first-punch',    name: 'First Punch',    icon: '⏱️', unit: 'shift',     desc: 'Log your very first shift.',               target: 1,   metric: p => entries.filter(e => e.person === p).length },
+  { key: 'century-club',   name: 'Century Club',   icon: '💯', unit: 'hours',     desc: 'Log 100 total hours.',                     target: 100, metric: personTotalHours },
+  { key: 'half-k-club',    name: 'Half-K Club',    icon: '🏔️', unit: 'hours',     desc: 'Log 500 total hours.',                     target: 500, metric: personTotalHours },
+  { key: 'first-checkin',  name: 'Checked In',     icon: '📝', unit: 'check-in',  desc: 'Log your first mood check-in.',            target: 1,   metric: personCheckinCount },
+  { key: 'week-streak',    name: 'Week Streak',    icon: '🔥', unit: 'days',      desc: 'Hit a 7-day mood check-in streak.',        target: 7,   metric: longestMoodStreak },
+  { key: 'month-streak',   name: 'Month Streak',   icon: '🌋', unit: 'days',      desc: 'Hit a 30-day mood check-in streak.',       target: 30,  metric: longestMoodStreak },
+  { key: 'vibe-historian', name: 'Vibe Historian', icon: '📚', unit: 'check-ins', desc: 'Log 50 mood check-ins.',                   target: 50,  metric: personCheckinCount },
+  { key: 'beer-baron',     name: 'Beer Baron',     icon: '🍺', unit: 'rounds',    desc: 'Reach 5 beer rounds on the scoreboard.',   target: 5,   metric: p => Number(settings[`baseBeers_${p}`] || 0) },
+  { key: 'oracle',         name: 'Oracle',         icon: '🔮', unit: 'call',      desc: 'Correctly call a World Cup winner.',       target: 1,   metric: personCalledWorldCup },
+  { key: 'dedicated',      name: 'Dedicated',      icon: '📅', unit: 'days',      desc: 'Log shifts on 20 different days.',         target: 20,  metric: personDaysWorked },
+];
+function formatMetric(v, def) {
+  return def.unit === 'hours' ? v.toFixed(1) : Math.round(v);
+}
+
+/* ---------------------------------------------------------------------
+   Earned-badge tracking — persisted via settings, same approach as
+   everything else. A badge is recorded the moment its metric crosses
+   the target; only the device belonging to that person sees the
+   celebration popup when it happens live.
+   --------------------------------------------------------------------- */
+function getBadgesEarned() {
+  try { return JSON.parse(settings.badgesEarned || '{}'); } catch (e) { return {}; }
+}
+function hasAllBadges(person) {
+  const earned = getBadgesEarned();
+  return BADGE_DEFINITIONS.every(d => (earned[person] || []).includes(d.key));
+}
+async function checkBadges() {
+  const earned = getBadgesEarned();
+  let changed = false;
+  PEOPLE.forEach(p => {
+    if (!earned[p]) earned[p] = [];
+    BADGE_DEFINITIONS.forEach(b => {
+      if (!earned[p].includes(b.key) && b.metric(p) >= b.target) {
+        earned[p].push(b.key);
+        changed = true;
+        if (p === whoAmI) {
+          showBadge({ icon: b.icon, title: `${b.name} unlocked!`, message: b.desc });
+        }
+      }
+    });
+  });
+  if (changed) {
+    settings.badgesEarned = JSON.stringify(earned);
+    try { await apiSetSetting('badgesEarned', settings.badgesEarned); } catch (e) { console.error('Failed to save badges', e); }
+    renderPersonRow();
+    for (const p of PEOPLE) {
+      await checkIndividualBadgeMastery(p, earned);
+    }
+    await checkAllBadgesMastered(earned);
   }
+  renderBadgeDrawer();
 }
 
 /* ---------------------------------------------------------------------
-   Per-person "found" tracking — persisted via the same settings-based
-   approach as everything else (holidays, patch notes, etc). Requires
-   a saved identity (whoAmI) to attribute the find; if nobody's picked
-   an identity yet, the egg still fires but isn't recorded.
+   Individual mastery — if ONE person earns all 10 badges on their own,
+   they get a small gold medal badge next to their name wherever it
+   appears, visible to everyone. Only they see the full "10/10" detail.
    --------------------------------------------------------------------- */
-function getEggsFound() {
-  try { return JSON.parse(settings.eggsFound || '{}'); } catch (e) { return {}; }
-}
-async function recordEggFound(eggKey) {
-  if (!whoAmI || !eggKey) return;
-  const found = getEggsFound();
-  if (!found[whoAmI]) found[whoAmI] = [];
-  if (found[whoAmI].includes(eggKey)) return; // already recorded — nothing new to save
-  found[whoAmI].push(eggKey);
-  settings.eggsFound = JSON.stringify(found);
-  try { await apiSetSetting('eggsFound', settings.eggsFound); } catch (e) { console.error('Failed to save egg find', e); }
-  renderEggDrawer();
-  await checkIndividualMastery(whoAmI, found);
-  await checkAllEggsMastered(found);
-}
-
-/* ---------------------------------------------------------------------
-   Individual mastery — if ONE person finds all 10 on their own, they
-   get a small gold medal badge next to their name wherever it appears
-   (Time Clock, mood tabs, etc) — visible to everyone. But only they
-   see the full detail (the "10/10" caption and the gold outline on
-   their own card), since that only renders when person === whoAmI on
-   that device. Shared/permanent via settings, same as everything else.
-   --------------------------------------------------------------------- */
-function hasAllEggs(person) {
-  const found = getEggsFound();
-  return EGG_DEFINITIONS.every(d => (found[person] || []).includes(d.key));
-}
 function getIndividualMasteryCelebrated() {
   try { return JSON.parse(settings.individualMasteryCelebrated || '[]'); } catch (e) { return []; }
 }
 const INDIVIDUAL_MASTERY_MESSAGES = [
-  "Every secret in this app, found by you alone. Impressive, honestly.",
-  "10 for 10. The others will just see a medal — they won't know the details unless you tell them.",
-  "You've officially run out of hidden things to find here. Achievement unlocked, for real this time.",
+  "Every badge in this app, earned by you alone. Impressive, honestly.",
+  "10 for 10. The others will just see a medal — they won't know the breakdown unless you tell them.",
+  "You've officially run out of badges to chase here. Achievement unlocked, for real this time.",
 ];
-async function checkIndividualMastery(person, found) {
-  const allFound = EGG_DEFINITIONS.every(d => (found[person] || []).includes(d.key));
+async function checkIndividualBadgeMastery(person, earned) {
+  const allFound = BADGE_DEFINITIONS.every(d => (earned[person] || []).includes(d.key));
   if (!allFound) return;
   const celebrated = getIndividualMasteryCelebrated();
   if (celebrated.includes(person)) return;
@@ -309,45 +323,145 @@ async function checkIndividualMastery(person, found) {
   try { await apiSetSetting('individualMasteryCelebrated', settings.individualMasteryCelebrated); } catch (e) { console.error('Failed to save individual mastery', e); }
   renderPersonRow();
   if (person === whoAmI) {
-    showEgg({ eyebrow: '🥇 SOLO MASTERY', title: `${person}, you found everything.`, messages: INDIVIDUAL_MASTERY_MESSAGES, shower: 'confetti' });
+    showBadge({ icon: '🥇', title: `${person}, you earned everything.`, message: INDIVIDUAL_MASTERY_MESSAGES[Math.floor(Math.random() * INDIVIDUAL_MASTERY_MESSAGES.length)] });
   }
 }
 
 /* ---------------------------------------------------------------------
-   Grand finale — if every person has found every egg, a permanent,
-   shared badge unlocks. Checked after every new find. Persisted via
-   settings, so once it's unlocked it stays unlocked for good, for
-   the whole crew, on every device.
+   Grand finale — if every person has earned every badge, a permanent,
+   shared badge unlocks for good, for the whole crew, on every device.
    --------------------------------------------------------------------- */
 const MASTERY_MESSAGES = [
-  "Every secret in this app, found by all three of you. That's dedication bordering on concerning.",
-  "The Punch Board has nothing left to hide from this crew. Wear that badge with pride.",
+  "Every badge in this app, earned by all three of you. That's dedication bordering on concerning.",
+  "The Punch Board has nothing left to unlock for this crew. Wear that badge with pride.",
   "All ten. All three of you. Legendary status, permanently recorded.",
 ];
-async function checkAllEggsMastered(found) {
-  if (settings.allEggsMastered === 'true') return; // already unlocked, nothing to do
-  const allKeys = EGG_DEFINITIONS.map(d => d.key);
-  const everyoneFoundEverything = PEOPLE.every(p => allKeys.every(k => (found[p] || []).includes(k)));
-  if (!everyoneFoundEverything) return;
-
-  settings.allEggsMastered = 'true';
-  try { await apiSetSetting('allEggsMastered', 'true'); } catch (e) { console.error('Failed to save mastery flag', e); }
-  renderMasteryDecoration();
-  showEgg({ eyebrow: '🏅 LEGENDARY', title: 'Every secret. Everyone. Forever.', messages: MASTERY_MESSAGES, shower: 'confetti' });
-  spawnConfetti(); // extra burst for the occasion
+async function checkAllBadgesMastered(earned) {
+  if (settings.allBadgesMastered === 'true') return;
+  const allKeys = BADGE_DEFINITIONS.map(d => d.key);
+  const everyoneEarnedEverything = PEOPLE.every(p => allKeys.every(k => (earned[p] || []).includes(k)));
+  if (!everyoneEarnedEverything) return;
+  settings.allBadgesMastered = 'true';
+  try { await apiSetSetting('allBadgesMastered', 'true'); } catch (e) { console.error('Failed to save badge mastery flag', e); }
+  renderBadgeMasteryDecoration();
+  showBadge({ icon: '🏅', title: 'Every badge. Everyone. Forever.', message: MASTERY_MESSAGES[Math.floor(Math.random() * MASTERY_MESSAGES.length)] });
+  spawnConfetti();
 }
-function renderMasteryDecoration() {
-  const isMastered = settings.allEggsMastered === 'true';
+function renderBadgeMasteryDecoration() {
+  const isMastered = settings.allBadgesMastered === 'true';
   const badge = document.getElementById('mastery-badge');
   if (badge) badge.style.display = isMastered ? 'inline' : 'none';
   const drawerToggle = document.getElementById('egg-drawer-toggle');
-  if (drawerToggle) drawerToggle.textContent = isMastered ? '🏅 EGGS' : '🥚 EGGS';
+  if (drawerToggle) drawerToggle.textContent = isMastered ? '🏅 BADGES ✓' : '🏅 BADGES';
   const drawerBanner = document.getElementById('mastery-drawer-banner');
   if (drawerBanner) {
     drawerBanner.style.display = isMastered ? 'block' : 'none';
-    if (isMastered) drawerBanner.innerHTML = '<div class="mastery-banner">🏅 LEGENDARY — every secret found, by everyone</div>';
+    if (isMastered) drawerBanner.innerHTML = '<div class="mastery-banner">🏅 LEGENDARY — every badge earned, by everyone</div>';
   }
 }
+
+function showBadge({ icon, title, message }) {
+  spawnConfetti();
+  document.getElementById('egg-eyebrow').textContent = `${icon} BADGE EARNED`;
+  document.getElementById('egg-title').textContent = title;
+  document.getElementById('egg-message').textContent = message;
+  document.getElementById('egg-modal').style.display = 'flex';
+}
+document.getElementById('egg-close-btn').onclick = () => {
+  document.getElementById('egg-modal').style.display = 'none';
+};
+
+/* ---------------------------------------------------------------------
+   The drawer itself — toggle button pinned to the right edge, slides
+   a panel in. Each badge shows who's earned it (colored dots) plus an
+   expandable per-person progress bar so everyone can see how close
+   they are, instead of a one-shot secret with no visible progress.
+   --------------------------------------------------------------------- */
+let openBadgeKeys = new Set();
+function renderBadgeDrawer() {
+  const wrap = document.getElementById('egg-drawer-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const earned = getBadgesEarned();
+  BADGE_DEFINITIONS.forEach(def => {
+    const anyoneEarned = PEOPLE.some(p => (earned[p] || []).includes(def.key));
+    const row = document.createElement('div');
+    row.className = 'egg-row' + (anyoneEarned ? ' found' : '');
+
+    const top = document.createElement('div');
+    top.className = 'egg-row-top';
+    const icon = document.createElement('span');
+    icon.className = 'egg-row-icon';
+    icon.textContent = def.icon;
+    top.appendChild(icon);
+    const name = document.createElement('span');
+    name.className = 'egg-row-name';
+    name.textContent = def.name;
+    top.appendChild(name);
+    const dots = document.createElement('div');
+    dots.className = 'egg-row-dots';
+    PEOPLE.forEach(p => {
+      const d = document.createElement('span');
+      const got = (earned[p] || []).includes(def.key);
+      d.className = 'egg-mini-dot' + (got ? ' got' : '');
+      d.style.background = got ? COLORS[p] : '#fff';
+      d.title = got ? `${p} earned this` : p;
+      dots.appendChild(d);
+    });
+    top.appendChild(dots);
+    row.appendChild(top);
+
+    const desc = document.createElement('div');
+    desc.className = 'egg-hint-text open';
+    desc.style.marginBottom = '8px';
+    desc.textContent = def.desc;
+    row.appendChild(desc);
+
+    const isOpen = openBadgeKeys.has(def.key);
+    const hintBtn = document.createElement('button');
+    hintBtn.className = 'egg-hint-btn';
+    hintBtn.textContent = isOpen ? 'Hide progress' : 'Show progress';
+    hintBtn.onclick = () => {
+      if (openBadgeKeys.has(def.key)) openBadgeKeys.delete(def.key);
+      else openBadgeKeys.add(def.key);
+      renderBadgeDrawer();
+    };
+    row.appendChild(hintBtn);
+
+    const progressWrap = document.createElement('div');
+    progressWrap.className = 'egg-hint-text' + (isOpen ? ' open' : '');
+    PEOPLE.forEach(p => {
+      const metric = def.metric(p);
+      const pct = Math.min(100, (metric / def.target) * 100);
+      const pRow = document.createElement('div');
+      pRow.style.cssText = 'margin-top:8px;';
+      const label = document.createElement('div');
+      label.className = 'leader-meta';
+      label.style.marginBottom = '2px';
+      label.textContent = `${p}: ${formatMetric(metric, def)} / ${formatMetric(def.target, def)} ${def.unit}`;
+      pRow.appendChild(label);
+      const track = document.createElement('div');
+      track.className = 'hours-bar-track';
+      const fill = document.createElement('div');
+      fill.className = 'hours-bar-fill';
+      fill.style.width = `${pct}%`;
+      fill.style.background = COLORS[p];
+      track.appendChild(fill);
+      pRow.appendChild(track);
+      progressWrap.appendChild(pRow);
+    });
+    row.appendChild(progressWrap);
+
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('egg-drawer-toggle').onclick = () => {
+  document.getElementById('egg-drawer').classList.add('open');
+  renderBadgeDrawer();
+};
+document.getElementById('egg-drawer-close').onclick = () => {
+  document.getElementById('egg-drawer').classList.remove('open');
+};
 
 /* ---------------------------------------------------------------------
    Birthday decorations — controlled from the separate developer page
@@ -405,276 +519,6 @@ function renderMissingDaysBanners() {
   });
 }
 
-function showEgg({ eyebrow, title, messages, shower, eggKey }) {
-  if (shower === 'confetti') spawnConfetti();
-  if (shower === 'beer') spawnEmojiShower(['🍺', '🍻']);
-  document.getElementById('egg-eyebrow').textContent = eyebrow;
-  document.getElementById('egg-title').textContent = title;
-  document.getElementById('egg-message').textContent =
-    messages[Math.floor(Math.random() * messages.length)];
-  document.getElementById('egg-modal').style.display = 'flex';
-  recordEggFound(eggKey);
-}
-document.getElementById('egg-close-btn').onclick = () => {
-  document.getElementById('egg-modal').style.display = 'none';
-};
-
-/* ---------------------------------------------------------------------
-   The drawer itself — toggle button pinned to the right edge, slides
-   a panel in. Hint-open state is local/session-only, not persisted.
-   --------------------------------------------------------------------- */
-let openHintKeys = new Set();
-function renderEggDrawer() {
-  const wrap = document.getElementById('egg-drawer-list');
-  if (!wrap) return;
-  wrap.innerHTML = '';
-  const found = getEggsFound();
-  EGG_DEFINITIONS.forEach(def => {
-    const anyoneFound = PEOPLE.some(p => (found[p] || []).includes(def.key));
-    const row = document.createElement('div');
-    row.className = 'egg-row' + (anyoneFound ? ' found' : '');
-
-    const top = document.createElement('div');
-    top.className = 'egg-row-top';
-    const icon = document.createElement('span');
-    icon.className = 'egg-row-icon';
-    icon.textContent = anyoneFound ? '🏆' : '🥚';
-    top.appendChild(icon);
-    const name = document.createElement('span');
-    name.className = 'egg-row-name';
-    name.textContent = def.name;
-    top.appendChild(name);
-    const dots = document.createElement('div');
-    dots.className = 'egg-row-dots';
-    PEOPLE.forEach(p => {
-      const d = document.createElement('span');
-      const got = (found[p] || []).includes(def.key);
-      d.className = 'egg-mini-dot' + (got ? ' got' : '');
-      d.style.background = got ? COLORS[p] : '#fff';
-      d.title = got ? `${p} found this` : p;
-      dots.appendChild(d);
-    });
-    top.appendChild(dots);
-    row.appendChild(top);
-
-    const hintBtn = document.createElement('button');
-    hintBtn.className = 'egg-hint-btn';
-    const isOpen = openHintKeys.has(def.key);
-    hintBtn.textContent = isOpen ? 'Hide hint' : 'Show hint';
-    hintBtn.onclick = () => {
-      if (openHintKeys.has(def.key)) openHintKeys.delete(def.key);
-      else openHintKeys.add(def.key);
-      renderEggDrawer();
-    };
-    row.appendChild(hintBtn);
-
-    const hintText = document.createElement('div');
-    hintText.className = 'egg-hint-text' + (isOpen ? ' open' : '');
-    hintText.textContent = def.hint;
-    row.appendChild(hintText);
-
-    wrap.appendChild(row);
-  });
-}
-document.getElementById('egg-drawer-toggle').onclick = () => {
-  document.getElementById('egg-drawer').classList.add('open');
-  renderEggDrawer();
-};
-document.getElementById('egg-drawer-close').onclick = () => {
-  document.getElementById('egg-drawer').classList.remove('open');
-};
-
-/* --- Secret 1: tap the title 7 times fast --- */
-const EGG_MESSAGES = [
-  "The Punch Board has been watching. It approves of your dedication to nonsense.",
-  "You found the secret. There is no prize. The prize was the taps you made along the way.",
-  "Legend says whoever finds this gets first pick of beers forever. Legend is wrong.",
-  "Achievement unlocked: Has Too Much Time On Their Hands.",
-  "Somewhere, Luigi, Juan, or Sergio is proud of you. Probably.",
-];
-let titleTapCount = 0;
-let titleTapResetTimer = null;
-document.getElementById('app-title').addEventListener('click', () => {
-  titleTapCount++;
-  clearTimeout(titleTapResetTimer);
-  titleTapResetTimer = setTimeout(() => { titleTapCount = 0; }, 1500);
-  if (titleTapCount >= 7) {
-    titleTapCount = 0;
-    showEgg({ eyebrow: '🥚 SECRET FOUND', title: 'Nice tapping.', messages: EGG_MESSAGES, shower: 'confetti', eggKey: 'title-tap' });
-  }
-});
-
-/* --- Secret 2: classic Konami code on a keyboard --- */
-const KONAMI_SEQUENCE = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','KeyB','KeyA'];
-const KONAMI_MESSAGES = [
-  "Up up down down left right left right B A. Some things never die.",
-  "30 extra lives added to your beer tally. (Not really. We checked. It's not really.)",
-  "You've unlocked... nothing. But we respect the muscle memory.",
-];
-let konamiBuffer = [];
-document.addEventListener('keydown', (e) => {
-  konamiBuffer.push(e.code);
-  konamiBuffer = konamiBuffer.slice(-KONAMI_SEQUENCE.length);
-  if (konamiBuffer.join(',') === KONAMI_SEQUENCE.join(',')) {
-    konamiBuffer = [];
-    showEgg({ eyebrow: '🎮 KONAMI MASTER', title: 'Old school.', messages: KONAMI_MESSAGES, shower: 'confetti', eggKey: 'konami' });
-  }
-});
-
-/* --- Secret 3: log a perfect mood check-in (Energy 5, Stress 1, Happiness 5) --- */
-const FLAWLESS_MESSAGES = [
-  "Energy maxed, stress at rock bottom, happiness maxed. A genuinely flawless day, logged flawlessly.",
-  "Every slider in exactly the right direction. Statistically rare. Suspiciously rare, even.",
-  "Whatever you did today, do it again.",
-];
-document.getElementById('save-checkin-btn').addEventListener('click', () => {
-  if (ratings.energy === 5 && ratings.stress === 1 && ratings.happiness === 5) {
-    showEgg({ eyebrow: '✨ FLAWLESS', title: 'A perfect day.', messages: FLAWLESS_MESSAGES, shower: 'confetti', eggKey: 'flawless-checkin' });
-  }
-});
-
-/* --- Secret 4: tap the crew color dots on Time Clock in the right order --- */
-const DOT_MESSAGES = [
-  "Order acknowledged. Someone's been paying attention to the little details.",
-  "You found the roll call. Nobody else will ever know what order it is.",
-  "Correct sequence. This message self-destructs in... nothing, actually, it just closes when you tap Close.",
-];
-const SECRET_DOT_ORDER = ['Sergio', 'Luigi', 'Juan'];
-let dotTapSequence = [];
-let dotTapResetTimer = null;
-function handleDotTap(person) {
-  dotTapSequence.push(person);
-  clearTimeout(dotTapResetTimer);
-  dotTapResetTimer = setTimeout(() => { dotTapSequence = []; }, 2000);
-  dotTapSequence = dotTapSequence.slice(-SECRET_DOT_ORDER.length);
-  if (dotTapSequence.join(',') === SECRET_DOT_ORDER.join(',')) {
-    dotTapSequence = [];
-    showEgg({ eyebrow: '🎯 CREW ROLL CALL', title: 'Order acknowledged.', messages: DOT_MESSAGES, shower: 'confetti', eggKey: 'dot-sequence' });
-  }
-}
-
-/* --- Secret 5: tap the 🎨 theme button 4 times fast --- */
-const PRISM_MESSAGES = [
-  "Four taps on a palette icon. The app has no more themes to give you, but it appreciates the enthusiasm.",
-  "You really wanted a 5th theme, didn't you. This isn't it. Sorry.",
-  "The palette icon noticed. That's the whole secret.",
-];
-let themeTapCount = 0;
-let themeTapResetTimer = null;
-const themeSwitchBtnEl = document.getElementById('theme-switch-btn');
-if (themeSwitchBtnEl) {
-  themeSwitchBtnEl.addEventListener('click', () => {
-    themeTapCount++;
-    clearTimeout(themeTapResetTimer);
-    themeTapResetTimer = setTimeout(() => { themeTapCount = 0; }, 1500);
-    if (themeTapCount >= 4) {
-      themeTapCount = 0;
-      showEgg({ eyebrow: '🎨 PRISM', title: 'Four taps, noted.', messages: PRISM_MESSAGES, shower: 'confetti', eggKey: 'theme-tap' });
-    }
-  });
-}
-
-/* --- Secret 6: leave the app untouched for 60 seconds --- */
-const IDLE_MESSAGES = [
-  "You didn't move. Respect for the stillness.",
-  "60 seconds of doing nothing, tracked and rewarded. Efficient use of a break.",
-  "The app got bored waiting, so it made this instead.",
-];
-let lastActivityTime = Date.now();
-['click', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
-  document.addEventListener(evt, () => { lastActivityTime = Date.now(); }, { passive: true });
-});
-setInterval(() => {
-  if (Date.now() - lastActivityTime >= 60000) {
-    lastActivityTime = Date.now(); // reset so it can fire again after another idle stretch, not on a loop
-    showEgg({ eyebrow: '🗿 STILL THERE?', title: "You didn't move.", messages: IDLE_MESSAGES, shower: 'confetti', eggKey: 'idle' });
-  }
-}, 5000);
-
-/* --- Secret 7: tap the Spain champions banner 3 times fast --- */
-const CHAMPION_TAP_MESSAGES = [
-  "Olé olé olé, olé olé — you found it.",
-  "Spain approves of this level of enthusiasm.",
-  "Three taps for the champions. Seems fair.",
-];
-let championTapCount = 0;
-let championTapResetTimer = null;
-const championBannerEl = document.getElementById('champion-banner');
-if (championBannerEl) {
-  championBannerEl.style.cursor = 'pointer';
-  championBannerEl.addEventListener('click', () => {
-    championTapCount++;
-    clearTimeout(championTapResetTimer);
-    championTapResetTimer = setTimeout(() => { championTapCount = 0; }, 1500);
-    if (championTapCount >= 3) {
-      championTapCount = 0;
-      showEgg({ eyebrow: '🇪🇸 OLÉ', title: 'Olé olé olé.', messages: CHAMPION_TAP_MESSAGES, shower: 'confetti', eggKey: 'champion-tap' });
-    }
-  });
-}
-
-/* --- Secret 8: type "campeones" anywhere on the page --- */
-const CAMPEONES_WORD = 'campeones';
-const CAMPEONES_MESSAGES = [
-  "Campeones del mundo. You typed it, so it's official now.",
-  "Somewhere, a Spanish commentator is very proud of you.",
-  "That word has been said a lot this year. Add it to the list.",
-];
-let campeonesBuffer = '';
-document.addEventListener('keydown', (e) => {
-  const tag = (document.activeElement && document.activeElement.tagName) || '';
-  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return; // don't hijack typing in forms
-  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
-    campeonesBuffer = (campeonesBuffer + e.key.toLowerCase()).slice(-CAMPEONES_WORD.length);
-    if (campeonesBuffer === CAMPEONES_WORD) {
-      campeonesBuffer = '';
-      showEgg({ eyebrow: '🏆 CAMPEONES', title: 'Campeones del mundo.', messages: CAMPEONES_MESSAGES, shower: 'confetti', eggKey: 'campeones-word' });
-    }
-  }
-});
-
-/* --- Secret 9: tap your "You're ___" identity line 5 times fast --- */
-const SELF_AWARE_MESSAGES = [
-  "You noticed yourself. That's the whole trick.",
-  "Yes, that's you. Congratulations on being aware of it.",
-  "The app has been quietly tracking who you are this whole time. Now it knows you know.",
-];
-let whoamiTapCount = 0;
-let whoamiTapResetTimer = null;
-const whoamiTextEl = document.getElementById('whoami-text');
-if (whoamiTextEl) {
-  whoamiTextEl.style.cursor = 'pointer';
-  whoamiTextEl.addEventListener('click', () => {
-    whoamiTapCount++;
-    clearTimeout(whoamiTapResetTimer);
-    whoamiTapResetTimer = setTimeout(() => { whoamiTapCount = 0; }, 1500);
-    if (whoamiTapCount >= 5) {
-      whoamiTapCount = 0;
-      showEgg({ eyebrow: '🪞 SELF AWARE', title: 'You noticed yourself.', messages: SELF_AWARE_MESSAGES, shower: 'confetti', eggKey: 'whoami-tap' });
-    }
-  });
-}
-
-/* --- Secret 10: type "cheers" anywhere on the page --- */
-const CHEERS_WORD = 'cheers';
-const CHEERS_MESSAGES = [
-  "Cheers to that. Someone add it to the beer scoreboard.",
-  "A toast, typed into a time-tracking app. Very on brand for this crew.",
-  "🍻 to whoever found this one.",
-];
-let cheersBuffer = '';
-document.addEventListener('keydown', (e) => {
-  const tag = (document.activeElement && document.activeElement.tagName) || '';
-  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return; // don't hijack typing in forms
-  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
-    cheersBuffer = (cheersBuffer + e.key.toLowerCase()).slice(-CHEERS_WORD.length);
-    if (cheersBuffer === CHEERS_WORD) {
-      cheersBuffer = '';
-      showEgg({ eyebrow: '🍻 CHEERS', title: 'Cheers to that.', messages: CHEERS_MESSAGES, shower: 'beer', eggKey: 'cheers-word' });
-    }
-  }
-});
-
 /* ---------------------------------------------------------------------
    Archived wagers — persisted via the existing 'setSetting' action
    (same one actualWinner already uses), so this works without needing
@@ -697,55 +541,25 @@ async function addArchivedMatchId(matchId) {
   try { await apiSetSetting('archivedMatchIds', settings.archivedMatchIds); } catch (e) { console.error('Failed to persist archived match list', e); }
 }
 
-
 async function loadData() {
-  console.log('[Punch Board] Starting data load…');
-
   try {
     const data = await apiGetAll();
-
-    console.log('[Punch Board] Backend response:', data);
-
-    if (!data || typeof data !== 'object') {
-      throw new Error('Backend response is not an object.');
-    }
-
-    console.log('[Punch Board] Response keys:', Object.keys(data));
-
     entries = data.entries || [];
     moodEntries = data.moodEntries || [];
     settings = data.settings || {};
-
     const archivedIds = getArchivedMatchIds();
-    matches = (data.matches || []).filter(
-      m => !archivedIds.includes(m.id)
-    );
-    predictions = (data.predictions || []).filter(
-      pr => !archivedIds.includes(pr.matchId)
-    );
+    matches = (data.matches || []).filter(m => !archivedIds.includes(m.id));
+    predictions = (data.predictions || []).filter(pr => !archivedIds.includes(pr.matchId));
     winnerPicks = data.winnerPicks || [];
-
-    console.log('[Punch Board] Loaded counts:', {
-      entries: entries.length,
-      moodEntries: moodEntries.length,
-      matches: matches.length,
-      predictions: predictions.length,
-      winnerPicks: winnerPicks.length,
-      settings: Object.keys(settings).length
-    });
-
-    syncMoodToIdentity();
-
-    renderTimeTab();
-    renderCrewPulse();
-    renderEggDrawer();
-    renderMasteryDecoration();
-    renderBirthdayDecorations();
-    renderMissingDaysBanners();
-
+    syncMoodToIdentity(); // re-derive today's ratings for whoAmI now that real data is in
   } catch (e) {
-    console.error('[Punch Board] Data load failed:', e);
+    console.error('Failed to load data', e);
   }
+  renderTimeTab(); // default active tab on load — others render on demand via switchMainTab
+  renderCrewPulse();
+  renderBadgeDrawer();
+  renderBadgeMasteryDecoration();
+  renderBirthdayDecorations();
+  renderMissingDaysBanners();
+  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 }
-
-loadData();

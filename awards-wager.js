@@ -727,6 +727,7 @@ async function archiveMatch(matchId) {
   predictions = predictions.filter(pr => pr.matchId !== matchId);
   renderBetsTab();
   renderWeeklyRecap();
+  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 
   // Best-effort real cleanup — harmless no-op until a matching backend
   // handler exists; the archived-list filter above is what actually
@@ -927,5 +928,6 @@ document.getElementById('archive-winner-btn').onclick = async () => {
   renderWinnerPredict();
   renderBetsScoreboard();
   renderWorldCupHistory();
+  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 };
 function renderBetsTab() { renderBetsScoreboard(); renderMatchList(); renderWinnerPredict(); renderWorldCupHistory(); renderGoalTracker(); }

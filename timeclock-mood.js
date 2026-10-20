@@ -18,8 +18,8 @@ async function clockOut(person) {
     const entry = { id: `${person}-${end.getTime()}`, person, start: start.toISOString(), end: end.toISOString(), hours };
     entries.unshift(entry);
     renderTimeTab();
+    if (typeof checkBadges === 'function') checkBadges(person);
     try { await apiAddEntry(entry); } catch (e) { console.error('Failed to save entry', e); }
-    try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
   } else {
     renderPersonRow();
   }
@@ -37,8 +37,8 @@ async function addManualEntry() {
   const entry = { id: `${person}-${Date.now()}`, person, start: start.toISOString(), end: end.toISOString(), hours };
   entries.unshift(entry);
   renderTimeTab();
+  if (typeof checkBadges === 'function') checkBadges(person);
   try { await apiAddEntry(entry); } catch (e) { console.error('Failed to save entry', e); }
-  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 }
 async function deleteEntry(id) {
   entries = entries.filter((e) => e.id !== id);
@@ -68,11 +68,8 @@ function renderPersonRow() {
   PEOPLE.forEach((person) => {
     const shiftStart = activeShifts[person];
     const isActive = !!shiftStart;
-    const isBadgeMaster = hasAllBadges(person);
     const card = document.createElement('div');
-    card.className = 'person-card'
-      + (person === whoAmI ? ' is-you' : '')
-      + (isBadgeMaster && person === whoAmI ? ' egg-master-mine' : '');
+    card.className = 'person-card' + (person === whoAmI ? ' is-you' : '');
     card.style.borderColor = isActive ? COLORS[person] : '#E4DDD0';
     card.style.background = isActive ? `${COLORS[person]}0D` : '#FFFFFF';
 
@@ -83,13 +80,6 @@ function renderPersonRow() {
     dot.style.background = COLORS[person];
     nameDiv.appendChild(dot);
     nameDiv.appendChild(document.createTextNode(person));
-    if (isBadgeMaster) {
-      const medal = document.createElement('span');
-      medal.className = 'egg-medal';
-      medal.textContent = '🥇';
-      medal.title = person === whoAmI ? '10/10 badges earned' : 'Earned every badge in the app';
-      nameDiv.appendChild(medal);
-    }
     if (settings.birthdayMode === 'true' && settings.birthdayPerson === person) {
       const cake = document.createElement('span');
       cake.className = 'birthday-cake-badge';
@@ -104,12 +94,6 @@ function renderPersonRow() {
       nameDiv.appendChild(badge);
     }
     card.appendChild(nameDiv);
-    if (isBadgeMaster && person === whoAmI) {
-      const detail = document.createElement('div');
-      detail.className = 'egg-master-detail';
-      detail.textContent = '🥇 10/10 badges earned';
-      card.appendChild(detail);
-    }
 
     if (isActive) {
       const elapsedHours = (now - new Date(shiftStart)) / (1000 * 60 * 60);
@@ -312,6 +296,10 @@ function getOvertimeRange(period, person) {
   if (period === 'ytd') {
     const yearStartStr = iso(new Date(now.getFullYear(), 0, 1));
     const todayStr = todayISO();
+    // Don't count expected days before this person's very first logged
+    // entry ever, if that happens to fall after Jan 1 — otherwise someone
+    // who only started using the app in June looks "behind" for the
+    // five months before it existed for them.
     const personEntries = entries.filter(e => e.person === person);
     if (personEntries.length === 0) {
       return { start: todayStr, end: todayStr, label: 'year to date (no entries yet)' };
@@ -673,8 +661,8 @@ document.getElementById('save-checkin-btn').onclick = async () => {
   const entry = { id: `${moodPerson}-${date}-${Date.now()}`, person: moodPerson, date, energy, stress, happiness };
   moodEntries.push(entry);
   renderMoodTab();
+  if (typeof checkBadges === 'function') checkBadges(moodPerson);
   try { await apiAddMood(entry); } catch (e) { console.error('Failed to save mood', e); }
-  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 };
 
 function renderMini(key, containerId) {
@@ -709,8 +697,8 @@ document.getElementById('backfill-btn').onclick = async () => {
   renderMini('stress', 'mini-stress');
   renderMini('happiness', 'mini-happiness');
   renderMoodTab();
+  if (typeof checkBadges === 'function') checkBadges(p);
   try { await apiAddMood(entry); } catch (e) { console.error('Failed to save mood', e); }
-  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 };
 
 function renderMoodFilterChips() {

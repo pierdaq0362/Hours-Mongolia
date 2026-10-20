@@ -727,7 +727,6 @@ async function archiveMatch(matchId) {
   predictions = predictions.filter(pr => pr.matchId !== matchId);
   renderBetsTab();
   renderWeeklyRecap();
-  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 
   // Best-effort real cleanup — harmless no-op until a matching backend
   // handler exists; the archived-list filter above is what actually
@@ -928,6 +927,160 @@ document.getElementById('archive-winner-btn').onclick = async () => {
   renderWinnerPredict();
   renderBetsScoreboard();
   renderWorldCupHistory();
-  try { await checkBadges(); } catch (e) { console.error('Failed to check badges', e); }
 };
 function renderBetsTab() { renderBetsScoreboard(); renderMatchList(); renderWinnerPredict(); renderWorldCupHistory(); renderGoalTracker(); }
+
+/* =========================================================================
+   BADGES — real milestones from actual app usage, replacing the old
+   hidden-easter-egg system (nobody ever found those). No hunting, no
+   mechanism to guess: just use the app and these unlock on their own.
+   Earned-state is always computed live from real data, so it can never
+   get out of sync; only "has this been celebrated yet" is persisted
+   per person, so the popup fires once each.
+   ========================================================================= */
+function personTotalHours(p) {
+  return entries.filter(e => e.person === p).reduce((sum, e) => sum + e.hours, 0);
+}
+function longestMoodStreak(p) {
+  const dates = Object.keys(personMoodMap(p)).sort();
+  if (dates.length === 0) return 0;
+  let longest = 1, current = 1;
+  for (let i = 1; i < dates.length; i++) {
+    const prev = new Date(dates[i - 1]), cur = new Date(dates[i]);
+    const gap = Math.round((cur - prev) / 86400000);
+    current = gap === 1 ? current + 1 : 1;
+    if (current > longest) longest = current;
+  }
+  return longest;
+}
+function calledWorldCupWinner(p) {
+  if (getWorldCupHistory().some(h => (h.callers || []).includes(p))) return true;
+  if (settings.actualWinner) {
+    const pick = winnerPicks.find(w => w.person === p);
+    if (pick && pick.prediction && pick.prediction.toLowerCase() === settings.actualWinner.toLowerCase()) return true;
+  }
+  return false;
+}
+function completedAnyGoal(p) {
+  if (typeof getGoals !== 'function') return false;
+  return getGoals().some(g => {
+    const prog = (g.progress && g.progress[p]) || { completed: 0, total: 0 };
+    return prog.total > 0 && prog.completed >= prog.total;
+  });
+}
+const BADGE_DEFINITIONS = [
+  { key: 'first-clock-in', icon: '🎬', name: 'Clocked In', desc: 'Log your very first shift.', check: p => entries.some(e => e.person === p) },
+  { key: 'century', icon: '💯', name: 'Century', desc: 'Log 100 total hours.', check: p => personTotalHours(p) >= 100 },
+  { key: 'half-k', icon: '🏗️', name: 'Half-K Grinder', desc: 'Log 500 total hours.', check: p => personTotalHours(p) >= 500 },
+  { key: 'week-streak', icon: '🔥', name: 'On a Roll', desc: 'Hit a 7-day mood check-in streak.', check: p => longestMoodStreak(p) >= 7 },
+  { key: 'month-streak', icon: '🧘', name: 'Iron Habit', desc: 'Hit a 30-day mood check-in streak.', check: p => longestMoodStreak(p) >= 30 },
+  { key: 'beer-baron', icon: '🍺', name: 'Beer Baron', desc: 'Rack up 5 rounds on the Beer Scoreboard.', check: p => (computeBeerStandings()[p] || 0) >= 5 },
+  { key: 'crystal-ball', icon: '🔮', name: 'Crystal Ball', desc: 'Correctly call a World Cup winner.', check: p => calledWorldCupWinner(p) },
+  { key: 'finisher', icon: '🎖️', name: 'Finisher', desc: 'Complete a shared goal.', check: p => completedAnyGoal(p) },
+  { key: 'idea-person', icon: '💡', name: 'Idea Person', desc: 'Get a suggestion marked done.', check: p => (typeof getSuggestions === 'function') && getSuggestions().some(s => s.person === p && s.done) },
+  { key: 'fixer', icon: '🎫', name: 'Fixer', desc: 'Log 3 support tickets.', check: p => (typeof getTickets === 'function') && getTickets().filter(t => t.person === p).length >= 3 },
+];
+function getEarnedBadges(p) {
+  return BADGE_DEFINITIONS.filter(b => b.check(p)).map(b => b.key);
+}
+function getBadgesCelebrated() {
+  try { return JSON.parse(settings.badgesCelebrated || '{}'); } catch (e) { return {}; }
+}
+async function checkBadges(person) {
+  if (!person) return;
+  const earned = getEarnedBadges(person);
+  const celebrated = getBadgesCelebrated();
+  const already = celebrated[person] || [];
+  const newOnes = earned.filter(k => !already.includes(k));
+  if (newOnes.length === 0) return;
+  celebrated[person] = [...already, ...newOnes];
+  settings.badgesCelebrated = JSON.stringify(celebrated);
+  try { await apiSetSetting('badgesCelebrated', settings.badgesCelebrated); } catch (e) { console.error('Failed to save badge progress', e); }
+  const def = BADGE_DEFINITIONS.find(b => b.key === newOnes[0]);
+  if (def) showBadgeEarned(def);
+  renderBadgesTab();
+}
+function showBadgeEarned(def) {
+  spawnConfetti();
+  document.getElementById('badge-eyebrow').textContent = '🏅 BADGE EARNED';
+  document.getElementById('badge-title').textContent = def.name;
+  document.getElementById('badge-message').textContent = def.desc;
+  document.getElementById('badge-modal').style.display = 'flex';
+}
+document.getElementById('badge-close-btn').onclick = () => {
+  document.getElementById('badge-modal').style.display = 'none';
+};
+function renderBadgeCase() {
+  const wrap = document.getElementById('badge-case-rows');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const total = BADGE_DEFINITIONS.length;
+  PEOPLE.forEach(p => {
+    const earned = getEarnedBadges(p).length;
+    const row = document.createElement('div');
+    row.className = 'leader-row';
+    const main = document.createElement('div');
+    main.className = 'leader-main';
+    const top = document.createElement('div');
+    top.className = 'leader-top-line';
+    const name = document.createElement('span');
+    name.className = 'leader-name';
+    name.textContent = p;
+    const val = document.createElement('span');
+    val.className = 'leader-value';
+    val.textContent = `${earned} / ${total}`;
+    top.appendChild(name); top.appendChild(val);
+    main.appendChild(top);
+    const track = document.createElement('div');
+    track.className = 'bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'bar-fill';
+    fill.style.width = `${(earned / total) * 100}%`;
+    fill.style.background = COLORS[p];
+    track.appendChild(fill);
+    main.appendChild(track);
+    row.appendChild(main);
+    wrap.appendChild(row);
+  });
+}
+function renderBadgeList() {
+  const wrap = document.getElementById('badge-list');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  BADGE_DEFINITIONS.forEach(def => {
+    const earnedBy = PEOPLE.filter(p => def.check(p));
+    const row = document.createElement('div');
+    row.className = 'egg-row' + (earnedBy.length ? ' found' : '');
+    const top = document.createElement('div');
+    top.className = 'egg-row-top';
+    const icon = document.createElement('span');
+    icon.className = 'egg-row-icon';
+    icon.textContent = def.icon;
+    top.appendChild(icon);
+    const name = document.createElement('span');
+    name.className = 'egg-row-name';
+    name.textContent = def.name;
+    top.appendChild(name);
+    const dots = document.createElement('div');
+    dots.className = 'egg-row-dots';
+    PEOPLE.forEach(p => {
+      const got = earnedBy.includes(p);
+      const d = document.createElement('span');
+      d.className = 'egg-mini-dot' + (got ? ' got' : '');
+      d.style.background = got ? COLORS[p] : '#fff';
+      d.title = got ? `${p} earned this` : p;
+      dots.appendChild(d);
+    });
+    top.appendChild(dots);
+    row.appendChild(top);
+    const descText = document.createElement('div');
+    descText.className = 'egg-hint-text open';
+    descText.textContent = def.desc;
+    row.appendChild(descText);
+    wrap.appendChild(row);
+  });
+}
+function renderBadgesTab() {
+  renderBadgeCase();
+  renderBadgeList();
+}

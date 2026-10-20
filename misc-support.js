@@ -2,38 +2,39 @@
    TAB SWITCHING
    ========================================================================= */
 document.getElementById('tab-time').onclick = () => switchMainTab('time');
-document.getElementById('tab-stats').onclick = () => switchMainTab('stats');
 document.getElementById('tab-mood').onclick = () => switchMainTab('mood');
 document.getElementById('tab-awards').onclick = () => switchMainTab('awards');
+document.getElementById('tab-badges').onclick = () => switchMainTab('badges');
 document.getElementById('tab-bets').onclick = () => switchMainTab('bets');
 document.getElementById('tab-patchnotes').onclick = () => switchMainTab('patchnotes');
 document.getElementById('tab-support').onclick = () => switchMainTab('support');
 document.getElementById('tab-vault').onclick = () => switchMainTab('vault');
 function switchMainTab(which) {
   document.getElementById('tab-time').classList.toggle('active', which === 'time');
-  document.getElementById('tab-stats').classList.toggle('active', which === 'stats');
   document.getElementById('tab-mood').classList.toggle('active', which === 'mood');
   document.getElementById('tab-awards').classList.toggle('active', which === 'awards');
+  document.getElementById('tab-badges').classList.toggle('active', which === 'badges');
   document.getElementById('tab-bets').classList.toggle('active', which === 'bets');
   document.getElementById('tab-patchnotes').classList.toggle('active', which === 'patchnotes');
   document.getElementById('tab-support').classList.toggle('active', which === 'support');
   document.getElementById('tab-vault').classList.toggle('active', which === 'vault');
   document.getElementById('view-time').classList.toggle('active', which === 'time');
-  document.getElementById('view-stats').classList.toggle('active', which === 'stats');
   document.getElementById('view-mood').classList.toggle('active', which === 'mood');
   document.getElementById('view-awards').classList.toggle('active', which === 'awards');
+  document.getElementById('view-badges').classList.toggle('active', which === 'badges');
   document.getElementById('view-bets').classList.toggle('active', which === 'bets');
   document.getElementById('view-patchnotes').classList.toggle('active', which === 'patchnotes');
   document.getElementById('view-support').classList.toggle('active', which === 'support');
   document.getElementById('view-vault').classList.toggle('active', which === 'vault');
   if (which === 'time') renderTimeTab();
-  if (which === 'stats') renderStatsTab();
   if (which === 'mood') renderMoodTab();
   if (which === 'awards') renderAwardsTab();
+  if (which === 'badges') renderBadgesTab();
   if (which === 'bets') renderBetsTab();
   if (which === 'patchnotes') renderPatchNotes();
   if (which === 'support') renderSupportTab();
   if (which === 'vault') renderVaultTab();
+  if (typeof checkBadges === 'function') checkBadges(whoAmI);
 }
 
 /* ---------------------------------------------------------------------

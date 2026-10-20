@@ -24,7 +24,7 @@
 
   <header>
     <div class="eyebrow">SHIFT REGISTER · GROUP CLOCK</div>
-    <h1 id="app-title">The Punch Board<span id="mastery-badge" style="display:none;" title="Every badge earned, by everyone."> 🏅</span></h1>
+    <h1 id="app-title">The Punch Board</h1>
     <div class="sub">Clock in, clock out, check in on the vibe, and settle the beer bets.</div>
     <div class="whoami-row">
       <span id="whoami-text">—</span>
@@ -45,6 +45,7 @@
     <div class="main-tab active" id="tab-time">Time Clock</div>
     <div class="main-tab" id="tab-mood">Mood Tracker<span class="tab-dot" id="mood-tab-dot"></span></div>
     <div class="main-tab" id="tab-awards">Crew Awards</div>
+    <div class="main-tab" id="tab-badges">🏅 Badges</div>
     <div class="main-tab" id="tab-bets">🎯 Wager Board</div>
     <div class="main-tab" id="tab-patchnotes">📋 Patch Notes</div>
     <div class="main-tab" id="tab-support">🎫 Support</div>
@@ -321,6 +322,20 @@
       <div class="animal-pic-wrap" id="animal-pic-wrap">
         <span class="empty-state">loading photo…</span>
       </div>
+    </section>
+  </div>
+
+  <!-- ===================== BADGES ===================== -->
+  <div class="view" id="view-badges">
+    <section class="panel">
+      <div class="panel-label">BADGE CASE</div>
+      <div class="panel-sub">Real milestones from actually using the app — no hunting, no hidden mechanism. Use it and these unlock themselves.</div>
+      <div id="badge-case-rows"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-label">ALL BADGES</div>
+      <div class="panel-sub">Dots show who on the crew has earned each one.</div>
+      <div id="badge-list"></div>
     </section>
   </div>
 
@@ -653,27 +668,17 @@
   </div>
 </div>
 
-<div class="egg-modal" id="egg-modal">
+<div class="egg-modal" id="badge-modal">
   <div class="egg-card">
-    <div class="egg-eyebrow" id="egg-eyebrow">🏅 BADGE EARNED</div>
-    <div class="egg-title" id="egg-title">Nice work.</div>
-    <div class="egg-message" id="egg-message">—</div>
-    <button class="egg-close-btn" id="egg-close-btn">Close</button>
+    <div class="egg-eyebrow" id="badge-eyebrow">🏅 BADGE EARNED</div>
+    <div class="egg-title" id="badge-title">Nice work.</div>
+    <div class="egg-message" id="badge-message">—</div>
+    <button class="egg-close-btn" id="badge-close-btn">Close</button>
   </div>
 </div>
 
-<button class="egg-drawer-toggle" id="egg-drawer-toggle">🏅 BADGES</button>
 <button class="missing-days-ribbon left" id="missing-days-ribbon-left" style="display:none;"></button>
 <button class="missing-days-ribbon right" id="missing-days-ribbon-right" style="display:none;"></button>
-<div class="egg-drawer" id="egg-drawer">
-  <div class="egg-drawer-head">
-    <div class="egg-drawer-title">Badges</div>
-    <button class="egg-drawer-close" id="egg-drawer-close">✕</button>
-  </div>
-  <div class="egg-drawer-sub">10 crew badges, earned through real stats — hours logged, streaks, beers won, and more. Dots show who's earned each one; tap "Show progress" to see how close everyone is.</div>
-  <div id="mastery-drawer-banner" style="display:none;"></div>
-  <div id="egg-drawer-list"></div>
-</div>
 
 <script src="core.js" defer></script>
 <script src="timeclock-mood.js" defer></script>

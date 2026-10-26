@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fetch test</title>
+<body style="font:14px/1.5 monospace;padding:14px;white-space:pre-wrap;word-break:break-all">
+<b>Fetch test — screenshot or copy this whole page to Claude</b>
+<div id="out">running…</div>
+<script>
+const U = 'https://script.google.com/macros/s/AKfycbwm1XTMSf_1sz_KmwvoEEbllJxkZLIVM1wvIcB81vaGJJsA_4KKuO9dLBCLrdWmxebP/exec';
+const out = document.getElementById('out');
+const log = s => { out.textContent += '\n' + s; };
+async function t(name, url, opts) {
+  const t0 = Date.now();
+  try {
+    const r = await fetch(url, opts);
+    const txt = await r.text();
+    log(`${name}: OK status=${r.status} type=${r.type} ms=${Date.now()-t0} bytes=${txt.length} start=${txt.slice(0,60).replace(/\s+/g,' ')}`);
+  } catch (e) { log(`${name}: FAIL ${e.name}: ${e.message} ms=${Date.now()-t0}`); }
+}
+(async () => {
+  out.textContent = 'page origin: ' + location.origin + '\nUA: ' + navigator.userAgent;
+  await t('1 plain', U);
+  await t('2 with ?t=', U + '?t=' + Date.now());
+  await t('3 no-store', U + '?t=' + Date.now(), { cache: 'no-store' });
+  await t('4 no-cors', U + '?t=' + Date.now(), { mode: 'no-cors' });
+  await t('5 omit credentials', U + '?t=' + Date.now(), { credentials: 'omit' });
+  await t('6 other site (sanity)', 'https://api.github.com/zen');
+  log('done');
+})();
+</script>

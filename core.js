@@ -307,6 +307,11 @@ async function loadData() {
     syncMoodToIdentity(); // re-derive today's ratings for whoAmI now that real data is in
   } catch (e) {
     console.error('Failed to load data', e);
+    const b = document.createElement('div');
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#B3261E;color:#fff;padding:10px 14px;font:13px/1.4 sans-serif;word-break:break-all;';
+    b.textContent = 'DATA LOAD FAILED: ' + (e && e.message ? e.message : e) + ' (tap to dismiss)';
+    b.onclick = () => b.remove();
+    document.body.appendChild(b);
   }
   renderTimeTab(); // default active tab on load — others render on demand via switchMainTab
   renderCrewPulse();

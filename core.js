@@ -65,7 +65,7 @@ function moodWord(score) {
    API layer — one GET returns everything; POST is action-routed
    --------------------------------------------------------------------- */
 async function apiGetAll() {
-  const res = await fetch(`${WEB_APP_URL}?t=${Date.now()}`, { cache: 'no-store' });
+  const res = await fetch(`${WEB_APP_URL}?t=${Date.now()}`);
   return await res.json();
 }
 async function apiPost(payload) {

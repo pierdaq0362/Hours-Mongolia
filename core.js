@@ -64,12 +64,31 @@ function moodWord(score) {
 /* ---------------------------------------------------------------------
    API layer — one GET returns everything; POST is action-routed
    --------------------------------------------------------------------- */
+// Script-tag (JSONP) loader: not subject to CORS, so it works even when the
+// browser blocks the fetch() response from script.google.com.
+function apiGetAllJsonp() {
+  return new Promise((resolve, reject) => {
+    const cb = '__pb_cb_' + Date.now();
+    const s = document.createElement('script');
+    const cleanup = () => { delete window[cb]; s.remove(); clearTimeout(timer); };
+    const timer = setTimeout(() => { cleanup(); reject(new Error('JSONP timeout')); }, 30000);
+    window[cb] = (data) => { cleanup(); resolve(data); };
+    s.onerror = () => { cleanup(); reject(new Error('JSONP load failed')); };
+    s.src = `${WEB_APP_URL}?callback=${cb}&t=${Date.now()}`;
+    document.head.appendChild(s);
+  });
+}
 async function apiGetAll() {
-  const res = await fetch(`${WEB_APP_URL}?t=${Date.now()}`);
-  return await res.json();
+  try {
+    const res = await fetch(`${WEB_APP_URL}?t=${Date.now()}`);
+    return await res.json();
+  } catch (e) {
+    return await apiGetAllJsonp();
+  }
 }
 async function apiPost(payload) {
-  await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
+  // no-cors: the write still reaches the script; we never read the response.
+  await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
 }
 async function apiAddEntry(entry) { await apiPost({ action: 'add', entry }); }
 async function apiDeleteEntry(id) { await apiPost({ action: 'delete', id }); }

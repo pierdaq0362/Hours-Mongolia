@@ -437,7 +437,128 @@ function renderCrewPulse() {
   window.__pulseInterval = setInterval(show, 5000);
 }
 
+/* =========================================================================
+   WEEKLY GRIND — hours since Monday per person, leader roasted; finished
+   weeks tallied as shame. Fully auto-computed from entries.
+   ========================================================================= */
+function weekStartISO(dateStr) {
+  const d = new Date(dateStr.slice(0, 10) + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+function weeklyTotals() {
+  const weeks = {};
+  entries.forEach(e => {
+    const wk = weekStartISO(e.start);
+    if (!weeks[wk]) weeks[wk] = {};
+    weeks[wk][e.person] = (weeks[wk][e.person] || 0) + e.hours;
+  });
+  return weeks;
+}
+function weeksWon(p) {
+  const weeks = weeklyTotals();
+  const current = weekStartISO(todayISO());
+  let wins = 0;
+  Object.keys(weeks).forEach(wk => {
+    if (wk >= current) return;
+    const t = weeks[wk];
+    const max = Math.max(...PEOPLE.map(x => t[x] || 0));
+    const leaders = PEOPLE.filter(x => (t[x] || 0) === max);
+    if (max > 0 && leaders.length === 1 && leaders[0] === p) wins++;
+  });
+  return wins;
+}
+function renderWeeklyRace() {
+  const wrap = document.getElementById('weekly-race-rows');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const cur = weeklyTotals()[weekStartISO(todayISO())] || {};
+  const hrs = p => cur[p] || 0;
+  const max = Math.max(...PEOPLE.map(hrs));
+  const target = Math.max(max, 1);
+  [...PEOPLE].sort((a, b) => hrs(b) - hrs(a)).forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'leader-row';
+    const main = document.createElement('div');
+    main.className = 'leader-main';
+    const top = document.createElement('div');
+    top.className = 'leader-top-line';
+    const name = document.createElement('span');
+    name.className = 'leader-name';
+    name.textContent = (max > 0 && hrs(p) === max ? '🤡 ' : '') + p + (weeksWon(p) ? `  🪦×${weeksWon(p)}` : '');
+    const val = document.createElement('span');
+    val.className = 'leader-value';
+    const gap = max - hrs(p);
+    val.textContent = `${formatDuration(hrs(p))}${gap > 0 ? `  (−${formatDuration(gap)})` : ''}`;
+    top.appendChild(name); top.appendChild(val);
+    main.appendChild(top);
+    const track = document.createElement('div');
+    track.className = 'bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'bar-fill';
+    fill.style.width = `${(hrs(p) / target) * 100}%`;
+    fill.style.background = COLORS[p];
+    track.appendChild(fill);
+    main.appendChild(track);
+    row.appendChild(main);
+    wrap.appendChild(row);
+  });
+}
+
+/* =========================================================================
+   ARRIVAL BOARD — average clock-in time (local) over the last 30 days.
+   ========================================================================= */
+function renderArrivalBoard() {
+  const wrap = document.getElementById('arrival-board-rows');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const cutoff = Date.now() - 30 * 86400000;
+  const stats = PEOPLE.map(p => {
+    const mins = entries
+      .filter(e => e.person === p && new Date(e.start).getTime() >= cutoff)
+      .map(e => { const d = new Date(e.start); return d.getHours() * 60 + d.getMinutes(); });
+    return { p, n: mins.length, avg: mins.length ? mins.reduce((a, b) => a + b, 0) / mins.length : null };
+  });
+  const ranked = stats.filter(s => s.avg !== null).sort((a, b) => a.avg - b.avg);
+  const earliest = ranked.length > 1 ? ranked[0].p : null;
+  const latest = ranked.length > 1 ? ranked[ranked.length - 1].p : null;
+  [...ranked, ...stats.filter(s => s.avg === null)].forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'leader-row';
+    const main = document.createElement('div');
+    main.className = 'leader-main';
+    const top = document.createElement('div');
+    top.className = 'leader-top-line';
+    const name = document.createElement('span');
+    name.className = 'leader-name';
+    name.textContent = (s.p === earliest ? '🪱 ' : s.p === latest ? '🐌 ' : '') + s.p;
+    const val = document.createElement('span');
+    val.className = 'leader-value';
+    if (s.avg === null) {
+      val.textContent = 'no punches yet';
+    } else {
+      const h = Math.floor(s.avg / 60), m = Math.round(s.avg % 60);
+      val.textContent = `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')} avg`;
+    }
+    top.appendChild(name); top.appendChild(val);
+    main.appendChild(top);
+    const track = document.createElement('div');
+    track.className = 'bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'bar-fill';
+    const pct = s.avg === null ? 0 : Math.max(5, Math.min(100, ((s.avg - 300) / 360) * 100)); // 05:00 → 11:00
+    fill.style.width = `${pct}%`;
+    fill.style.background = COLORS[s.p];
+    track.appendChild(fill);
+    main.appendChild(track);
+    row.appendChild(main);
+    wrap.appendChild(row);
+  });
+}
+
 function renderAwardsTab() {
+  renderWeeklyRace();
+  renderArrivalBoard();
   renderAwardsList();
   renderStreaks();
   renderWeeklyRecap();
@@ -978,6 +1099,7 @@ const BADGE_DEFINITIONS = [
   { key: 'crystal-ball', icon: '🔮', name: 'Crystal Ball', desc: 'Correctly call a World Cup winner.', check: p => calledWorldCupWinner(p) },
   { key: 'finisher', icon: '🎖️', name: 'Finisher', desc: 'Complete a shared goal.', check: p => completedAnyGoal(p) },
   { key: 'idea-person', icon: '💡', name: 'Idea Person', desc: 'Get a suggestion marked done.', check: p => (typeof getSuggestions === 'function') && getSuggestions().some(s => s.person === p && s.done) },
+  { key: 'week-winner', icon: '🤡', name: 'Employee of the Week', desc: 'Finish a week with the most hours on the crew. Nobody is proud of this.', check: p => weeksWon(p) >= 1 },
   { key: 'fixer', icon: '🎫', name: 'Fixer', desc: 'Log 3 support tickets.', check: p => (typeof getTickets === 'function') && getTickets().filter(t => t.person === p).length >= 3 },
 ];
 function getEarnedBadges(p) {

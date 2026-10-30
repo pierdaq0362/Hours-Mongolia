@@ -43,6 +43,7 @@
 
   <div class="main-tabs">
     <div class="main-tab active" id="tab-time">Time Clock</div>
+    <div class="main-tab" id="tab-stats">📊 Stats</div>
     <div class="main-tab" id="tab-mood">Mood Tracker<span class="tab-dot" id="mood-tab-dot"></span></div>
     <div class="main-tab" id="tab-awards">Crew Awards</div>
     <div class="main-tab" id="tab-badges">🏅 Badges</div>
@@ -180,6 +181,40 @@
     <section class="panel">
       <div class="panel-label">RECENT PUNCHES</div>
       <div id="recent-log"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== STATS ===================== -->
+  <div class="view" id="view-stats">
+
+    <section class="panel">
+      <div class="panel-label">PERIOD</div>
+      <div class="toggle-group" id="stats-period-toggle">
+        <button class="toggle-btn active" data-period="thisMonth">This month</button>
+        <button class="toggle-btn" data-period="lastMonth">Last month</button>
+        <button class="toggle-btn" data-period="ytd">Year to date</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">WORK RATIO</div>
+      <div class="panel-sub">Hours logged as a % of what each person is scheduled to work (vacation excluded, shift changes respected). The line marks 100%.</div>
+      <div id="ratio-rows"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">HOURS TREND</div>
+      <div class="panel-sub">Weekly totals over the last 8 weeks, with a 4-week forecast (dashed) based on each person's current trend.</div>
+      <div id="trend-chart"></div>
+      <div class="legend" id="trend-legend"></div>
+      <div id="trend-forecast" style="margin-top:12px;"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">DAY-OF-WEEK HEATMAP</div>
+      <div class="panel-sub">Average hours logged per weekday over the last 8 weeks — spot coverage gaps.</div>
+      <div id="heatmap-rows"></div>
     </section>
 
   </div>
@@ -694,6 +729,7 @@
 <script src="timeclock-mood.js" defer></script>
 <script src="awards-wager.js" defer></script>
 <script src="misc-support.js" defer></script>
+<script src="stats.js" defer></script>
 <script src="goals-eggs2-init.js" defer></script>
 </body>
 </html>

@@ -625,6 +625,43 @@
 
     <div id="vault-unlocked">
 
+      <section class="panel" id="smart-table-panel">
+        <style>
+          .st-card { border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:#fff; }
+          .st-row { display:flex; align-items:center; gap:10px; }
+          .st-rank { width:28px; text-align:center; font-size:18px; }
+          .st-name { flex:1; font-weight:600; font-size:16px; }
+          .st-score { font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:24px; text-align:right; }
+          .st-delta { font-size:11px; color:var(--muted); text-align:right; font-family:'IBM Plex Mono',monospace; }
+          .st-btns { display:flex; gap:8px; margin-top:8px; }
+          .st-btns button { flex:1; padding:9px 6px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); font:inherit; font-weight:600; cursor:pointer; }
+          .st-btns .st-good { background:#2E9B5C; border-color:#2E9B5C; color:#fff; }
+          .st-btns .st-bad { background:#E0503C; border-color:#E0503C; color:#fff; }
+          .st-log { font-size:13px; padding:6px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; }
+          .st-log b.d { width:40px; flex:0 0 40px; }
+        </style>
+        <div class="panel-label">🧠 SMART TABLE</div>
+        <div class="panel-sub">Everyone starts at 100. Do something smart, gain points. Do something stupid, lose them. Scoreline at the end.</div>
+        <div id="st-board"></div>
+        <div class="form-row" style="margin-top:6px;">
+          <div class="form-field" style="flex: 3 1 160px;">
+            <label class="form-label">What happened? (optional)</label>
+            <input type="text" id="st-reason" maxlength="120" placeholder="e.g. Fixed the Excel bug in 5 minutes" />
+          </div>
+          <div class="form-field" style="flex: 1 1 70px;">
+            <label class="form-label">Points</label>
+            <input type="number" id="st-amount" value="10" min="1" inputmode="numeric" />
+          </div>
+        </div>
+        <div class="panel-sub" style="margin-top:4px;">Set the reason and points, then tap 🧠 or 🤡 on the person.</div>
+        <div id="st-log" style="margin-top:10px;"></div>
+        <div style="display:flex; gap:8px; margin-top:10px; align-items:center;">
+          <button class="archive-btn" id="st-undo">Undo last</button>
+          <button class="archive-btn" id="st-reset">Reset all</button>
+          <span id="st-status" style="font-size:11px; color:var(--muted);"></span>
+        </div>
+      </section>
+
       <section class="panel">
         <div class="panel-label">🧪 ALPHA: DECISION ROULETTE</div>
         <div class="panel-sub">Experimental — nothing here is saved yet, this is just a quick spin. Type a decision, hit spin, one of the options gets picked.</div>
@@ -725,6 +762,74 @@
 <button class="missing-days-ribbon left" id="missing-days-ribbon-left" style="display:none;"></button>
 <button class="missing-days-ribbon right" id="missing-days-ribbon-right" style="display:none;"></button>
 
+<script>
+/* SMART TABLE — self-contained; uses core.js apiGetAll / apiSetSetting (setting key "smartTable"). */
+window.addEventListener('DOMContentLoaded', function () {
+  const KEY = 'smartTable', BASE = 100;
+  const STP = ['Luigi', 'Sergio', 'Juan', 'Marcos'];
+  const STC = { Luigi: '#D97757', Sergio: '#8B6F47', Juan: '#4A7C7C', Marcos: '#7A5C9E' };
+  let st = { log: [] };
+  const $ = id => document.getElementById(id);
+  const status = t => { $('st-status').textContent = t; };
+  const parse = sett => { try { const v = JSON.parse((sett || {})[KEY] || '{}'); return Array.isArray(v.log) ? v : { log: [] }; } catch (e) { return { log: [] }; } };
+  const persist = async () => {
+    try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {}
+    await apiSetSetting(KEY, JSON.stringify(st));
+  };
+  const pull = async () => { st = parse((await apiGetAll()).settings); };
+  function scores() { const s = {}; STP.forEach(p => s[p] = BASE); st.log.forEach(e => { if (s[e.p] !== undefined) s[e.p] += e.d; }); return s; }
+  function render() {
+    const s = scores();
+    const ranked = [...STP].sort((a, b) => s[b] - s[a]);
+    const medals = ['🥇', '🥈', '🥉', '💩'];
+    const board = $('st-board'); board.innerHTML = '';
+    ranked.forEach((p, i) => {
+      const diff = s[p] - BASE;
+      const c = document.createElement('div'); c.className = 'st-card';
+      c.innerHTML = '<div class="st-row"><div class="st-rank">' + (st.log.length ? medals[i] : '•') + '</div>'
+        + '<div class="st-name" style="color:' + STC[p] + '">' + p + '</div>'
+        + '<div><div class="st-score">' + s[p] + '</div><div class="st-delta">' + (diff >= 0 ? '+' : '') + diff + '</div></div></div>'
+        + '<div class="st-btns"><button class="st-good">🧠 Smart</button><button class="st-bad">🤡 Stupid</button></div>';
+      c.querySelector('.st-good').onclick = () => add(p, 1);
+      c.querySelector('.st-bad').onclick = () => add(p, -1);
+      board.appendChild(c);
+    });
+    const log = $('st-log'); log.innerHTML = '';
+    [...st.log].reverse().slice(0, 30).forEach(e => {
+      const r = document.createElement('div'); r.className = 'st-log';
+      const when = new Date(e.t).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const b = document.createElement('b'); b.className = 'd'; b.style.color = e.d >= 0 ? '#2E9B5C' : '#E0503C'; b.textContent = (e.d >= 0 ? '+' : '') + e.d;
+      const t = document.createElement('span'); t.textContent = e.p + (e.r ? ' — ' + e.r : '') + '  · ' + when;
+      r.appendChild(b); r.appendChild(t); log.appendChild(r);
+    });
+  }
+  async function add(p, sign) {
+    const amt = Math.max(1, Math.abs(parseInt($('st-amount').value, 10) || 10));
+    const e = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), p: p, d: sign * amt, r: $('st-reason').value.trim(), t: Date.now() };
+    status('saving…');
+    try { await pull(); } catch (x) {}
+    st.log.push(e); render(); $('st-reason').value = '';
+    try { await persist(); status('saved ✓'); } catch (x) { status('could not save — try again'); }
+  }
+  async function refresh() {
+    try { await pull(); status(''); }
+    catch (e) { try { st = JSON.parse(localStorage.getItem(KEY) || '{"log":[]}'); } catch (x) {} status('offline — last saved copy'); }
+    render();
+  }
+  $('st-undo').onclick = async () => {
+    if (!st.log.length || !confirm('Remove the last entry?')) return;
+    try { await pull(); } catch (e) {}
+    st.log.pop(); render(); await persist(); status('undone ✓');
+  };
+  $('st-reset').onclick = async () => {
+    if (!confirm('Reset everyone to 100 and clear the log?')) return;
+    st = { log: [] }; render(); await persist(); status('reset ✓');
+  };
+  $('tab-vault').addEventListener('click', refresh);
+  render();
+  setTimeout(refresh, 1500);
+});
+</script>
 <script src="core.js" defer></script>
 <script src="timeclock-mood.js" defer></script>
 <script src="awards-wager.js" defer></script>

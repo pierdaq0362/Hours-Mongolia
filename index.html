@@ -668,24 +668,36 @@
           .mn-row { display:flex; align-items:center; gap:10px; }
           .mn-rank { width:28px; text-align:center; font-size:18px; }
           .mn-name { flex:1; font-weight:600; font-size:16px; }
-          .mn-wins { font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:24px; text-align:right; }
+          .mn-pts { font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:24px; text-align:right; }
           .mn-meta { font-size:11px; color:var(--muted); text-align:right; font-family:'IBM Plex Mono',monospace; }
-          .mn-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-          .mn-btns button { flex:1; min-width:90px; padding:11px 6px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); font:inherit; font-weight:600; cursor:pointer; }
-          .mn-log { font-size:13px; padding:6px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; }
+          .mn-log { font-size:13px; padding:6px 0; border-bottom:1px solid var(--line); }
         </style>
         <div class="panel-label">🎩 MONOPOLY LEADERBOARD</div>
-        <div class="panel-sub">After each game, tap the winner. The leaderboard updates itself.</div>
+        <div class="panel-sub">1st place = 3 pts · 2nd place = 2 pts · last place = 1 pt. Pick 1st and 2nd after each game, last is filled in automatically.</div>
         <div id="mn-board"></div>
-        <div class="panel-label" style="margin-top:14px;">WHO WON THE GAME?</div>
-        <div class="mn-btns" id="mn-win-btns"></div>
-        <div class="form-row" style="margin-top:8px;">
+        <div class="panel-label" style="margin-top:14px;">ADD A GAME</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">🥇 1st place</label>
+            <select id="mn-first"></select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">🥈 2nd place</label>
+            <select id="mn-second"></select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">💩 Last place</label>
+            <input type="text" id="mn-last" readonly />
+          </div>
+        </div>
+        <div class="form-row">
           <div class="form-field" style="flex: 1 1 100%;">
             <label class="form-label">Note (optional)</label>
             <input type="text" id="mn-note" maxlength="120" placeholder="e.g. Bankrupted everyone with hotels on Boardwalk" />
           </div>
         </div>
-        <div id="mn-log" style="margin-top:10px;"></div>
+        <button class="add-btn" id="mn-save">Save game</button>
+        <div id="mn-log" style="margin-top:12px;"></div>
         <div style="display:flex; gap:8px; margin-top:10px; align-items:center;">
           <button class="archive-btn" id="mn-undo">Undo last</button>
           <button class="archive-btn" id="mn-reset">Reset all</button>
@@ -862,11 +874,13 @@ window.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <script>
-/* MONOPOLY LEADERBOARD — self-contained; setting key "monopolyScores" via core.js apiGetAll / apiSetSetting. */
+/* MONOPOLY LEADERBOARD — self-contained; setting key "monopolyScores" via core.js apiGetAll / apiSetSetting.
+   Each game: { w: 1st, s: 2nd, l: last, n: note, t: time }. Points: 3 / 2 / 1. */
 window.addEventListener('DOMContentLoaded', function () {
   const KEY = 'monopolyScores';
   const MP = ['Marcos', 'Sergio', 'Luigi'];
   const MC = { Marcos: '#7A5C9E', Sergio: '#8B6F47', Luigi: '#D97757' };
+  const PTS = { w: 3, s: 2, l: 1 };
   let mn = { games: [] };
   const $ = id => document.getElementById(id);
   const status = t => { $('mn-status').textContent = t; };
@@ -876,42 +890,60 @@ window.addEventListener('DOMContentLoaded', function () {
     await apiSetSetting(KEY, JSON.stringify(mn));
   };
   const pull = async () => { mn = parse((await apiGetAll()).settings); };
+
+  function fillSelects() {
+    const f = $('mn-first'), s = $('mn-second');
+    if (!f.options.length) {
+      MP.forEach(p => { f.add(new Option(p, p)); });
+      f.onchange = syncSecond;
+      s.onchange = syncLast;
+    }
+    syncSecond();
+  }
+  function syncSecond() {
+    const f = $('mn-first').value, s = $('mn-second'), keep = s.value;
+    s.innerHTML = '';
+    MP.filter(p => p !== f).forEach(p => s.add(new Option(p, p)));
+    if (keep && keep !== f) s.value = keep;
+    syncLast();
+  }
+  function syncLast() {
+    const f = $('mn-first').value, s = $('mn-second').value;
+    $('mn-last').value = MP.find(p => p !== f && p !== s) || '';
+  }
+
   function render() {
-    const wins = {}; MP.forEach(p => wins[p] = 0);
-    mn.games.forEach(g => { if (wins[g.w] !== undefined) wins[g.w]++; });
-    const total = mn.games.length;
-    const ranked = [...MP].sort((a, b) => wins[b] - wins[a]);
-    const max = Math.max(1, ...Object.values(wins));
+    const t = {}; MP.forEach(p => t[p] = { pts: 0, w: 0, s: 0, l: 0 });
+    mn.games.forEach(g => {
+      if (t[g.w]) { t[g.w].pts += PTS.w; t[g.w].w++; }
+      if (g.s && t[g.s]) { t[g.s].pts += PTS.s; t[g.s].s++; }
+      if (g.l && t[g.l]) { t[g.l].pts += PTS.l; t[g.l].l++; }
+    });
+    const ranked = [...MP].sort((a, b) => t[b].pts - t[a].pts || t[b].w - t[a].w);
+    const max = Math.max(1, ...MP.map(p => t[p].pts));
     const board = $('mn-board'); board.innerHTML = '';
     ranked.forEach((p, i) => {
-      const pct = total ? Math.round(wins[p] / total * 100) : 0;
       const c = document.createElement('div'); c.className = 'mn-card';
-      c.innerHTML = '<div class="mn-row"><div class="mn-rank">' + (total ? ['🥇', '🥈', '🥉'][i] : '•') + '</div>'
+      c.innerHTML = '<div class="mn-row"><div class="mn-rank">' + (mn.games.length ? ['🥇', '🥈', '🥉'][i] : '•') + '</div>'
         + '<div class="mn-name" style="color:' + MC[p] + '">' + p + '</div>'
-        + '<div><div class="mn-wins">' + wins[p] + (wins[p] === 1 ? ' win' : ' wins') + '</div><div class="mn-meta">' + pct + '% of ' + total + ' games</div></div></div>'
-        + '<div class="bar-track" style="margin-top:8px;"><div class="bar-fill" style="width:' + (wins[p] / max * 100) + '%;background:' + MC[p] + '"></div></div>';
+        + '<div><div class="mn-pts">' + t[p].pts + ' pts</div><div class="mn-meta">' + t[p].w + ' 🥇 · ' + t[p].s + ' 🥈 · ' + t[p].l + ' 💩 &nbsp;(' + mn.games.length + ' games)</div></div></div>'
+        + '<div class="bar-track" style="margin-top:8px;"><div class="bar-fill" style="width:' + (t[p].pts / max * 100) + '%;background:' + MC[p] + '"></div></div>';
       board.appendChild(c);
     });
-    const btns = $('mn-win-btns');
-    if (!btns.children.length) {
-      MP.forEach(p => {
-        const b = document.createElement('button');
-        b.textContent = '🏆 ' + p; b.style.borderColor = MC[p];
-        b.onclick = () => addWin(p);
-        btns.appendChild(b);
-      });
-    }
+    fillSelects();
     const log = $('mn-log'); log.innerHTML = '';
     [...mn.games].reverse().slice(0, 30).forEach((g, idx) => {
       const r = document.createElement('div'); r.className = 'mn-log';
       const when = new Date(g.t).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-      const n = mn.games.length - idx;
-      r.textContent = '#' + n + '  ' + g.w + ' won' + (g.n ? ' — ' + g.n : '') + '  · ' + when;
+      const order = g.s ? '🥇 ' + g.w + '  🥈 ' + g.s + '  💩 ' + g.l : '🥇 ' + g.w;
+      r.textContent = '#' + (mn.games.length - idx) + '  ' + order + (g.n ? ' — ' + g.n : '') + '  · ' + when;
       log.appendChild(r);
     });
   }
-  async function addWin(p) {
-    const g = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), w: p, n: $('mn-note').value.trim(), t: Date.now() };
+  async function addGame() {
+    const w = $('mn-first').value, s = $('mn-second').value, l = $('mn-last').value;
+    if (!w || !s || !l) return;
+    const g = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), w: w, s: s, l: l, n: $('mn-note').value.trim(), t: Date.now() };
     status('saving…');
     try { await pull(); } catch (x) {}
     mn.games.push(g); render(); $('mn-note').value = '';
@@ -922,6 +954,7 @@ window.addEventListener('DOMContentLoaded', function () {
     catch (e) { try { mn = JSON.parse(localStorage.getItem(KEY) || '{"games":[]}'); } catch (x) {} status('offline — last saved copy'); }
     render();
   }
+  $('mn-save').onclick = addGame;
   $('mn-undo').onclick = async () => {
     if (!mn.games.length || !confirm('Remove the last game?')) return;
     try { await pull(); } catch (e) {}

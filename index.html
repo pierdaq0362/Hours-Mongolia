@@ -32,3 +32,915 @@
       <button class="whoami-switch" id="theme-switch-btn">🎨 theme</button>
     </div>
   </header>
+
+  <div class="champion-banner" id="champion-banner">🇪🇸 🏆 SPAIN — 2026 WORLD CUP CHAMPIONS 🏆 🇪🇸</div>
+  <div class="birthday-banner" id="birthday-banner" style="display:none;"></div>
+
+  <div class="pulse-banner">
+    <span class="pulse-dot"></span>
+    <span class="pulse-text" id="pulse-text">Loading crew pulse…</span>
+  </div>
+
+  <div class="main-tabs">
+    <div class="main-tab active" id="tab-time">Time Clock</div>
+    <div class="main-tab" id="tab-stats">📊 Stats</div>
+    <div class="main-tab" id="tab-mood">Mood Tracker<span class="tab-dot" id="mood-tab-dot"></span></div>
+    <div class="main-tab" id="tab-awards">Crew Awards</div>
+    <div class="main-tab" id="tab-badges">🏅 Badges</div>
+    <div class="main-tab" id="tab-bets">🎯 Wager Board</div>
+    <div class="main-tab" id="tab-patchnotes">📋 Patch Notes</div>
+    <div class="main-tab" id="tab-support">🎫 Support</div>
+    <div class="main-tab" id="tab-vault">Misc</div>
+  </div>
+
+  <!-- ===================== TIME CLOCK ===================== -->
+  <div class="view active" id="view-time">
+
+    <section class="panel">
+      <div class="panel-label">WHO'S ON THE CLOCK</div>
+      <div class="person-row" id="person-row"></div>
+    </section>
+
+    <section class="panel">
+      <div class="leader-header-row">
+        <div class="panel-label">LEADERBOARD</div>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="toggle-lifetime">Lifetime</button>
+          <button class="toggle-btn" id="toggle-month">This month</button>
+          <button class="toggle-btn" id="toggle-ytd">Year to date</button>
+          <button class="toggle-btn" id="toggle-average">Daily average</button>
+        </div>
+      </div>
+      <div id="leaderboard"></div>
+    </section>
+
+    <section class="panel">
+      <div class="leader-header-row">
+        <div class="panel-label">EXTRA HOURS</div>
+        <button class="archive-btn" id="overtime-toggle-btn">Show</button>
+      </div>
+      <div class="panel-sub">Mon–Fri only — weekends and vacation don't count against anyone; recovery days subtract from the balance.</div>
+      <div id="overtime-content" style="display:none;">
+        <div class="toggle-group" id="overtime-period-toggle" style="margin-bottom:14px;">
+          <button class="toggle-btn active" data-period="thisMonth">This month</button>
+          <button class="toggle-btn" data-period="lastMonth">Last month</button>
+          <button class="toggle-btn" data-period="ytd">Year to date</button>
+        </div>
+        <div id="overtime-rows"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">TIME OFF &amp; SHIFT</div>
+      <div class="panel-sub">Add a vacation or recovery period, or change someone's hours/day. Vacation doesn't count against Extra Hours; recovery spends down a built-up Extra Hours balance.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Entry type</label>
+          <select id="entry-type-input">
+            <option value="vacation">Vacation</option>
+            <option value="recovery">Recovery hours</option>
+            <option value="shift">Shift change (hours/day)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Who</label>
+          <select id="entry-person-input">
+            <option value="All">Everyone</option>
+            <option value="Luigi">Luigi</option>
+            <option value="Juan">Juan</option>
+            <option value="Sergio">Sergio</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="entry-fields-timeoff" class="form-row">
+        <div class="form-field">
+          <label class="form-label">From</label>
+          <input type="date" id="holiday-start-input" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">To</label>
+          <input type="date" id="holiday-end-input" />
+        </div>
+        <div class="form-field" style="flex: 2 1 200px;">
+          <label class="form-label">What is it</label>
+          <input type="text" id="holiday-label-input" placeholder="e.g. Christmas Day" />
+        </div>
+      </div>
+
+      <div id="entry-fields-shift" class="form-row" style="display:none;">
+        <div class="form-field">
+          <label class="form-label">New hours/day</label>
+          <input type="number" id="shift-hours-input" min="1" max="24" step="0.5" value="8" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">Effective</label>
+          <select id="shift-effective-input">
+            <option value="now">From today onward</option>
+            <option value="past">Starting from a past date</option>
+          </select>
+        </div>
+        <div class="form-field" id="shift-past-date-field" style="display:none;">
+          <label class="form-label">Start date</label>
+          <input type="date" id="shift-past-date-input" />
+        </div>
+      </div>
+
+      <button class="add-btn" id="add-entry-btn">Add</button>
+      <div id="holiday-list" style="margin-top:14px;"></div>
+      <div id="shift-list" style="margin-top:14px;"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">LOG A PAST SHIFT</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Person</label>
+          <select id="manual-person">
+            <option value="Luigi">Luigi</option>
+            <option value="Juan">Juan</option>
+            <option value="Sergio">Sergio</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Date</label>
+          <input type="date" id="manual-date" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">Clock in</label>
+          <input type="time" id="manual-start" value="09:00" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">Clock out</label>
+          <input type="time" id="manual-end" value="17:00" />
+        </div>
+      </div>
+      <button class="add-btn" id="add-shift-btn">Add shift</button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">RECENT PUNCHES</div>
+      <div id="recent-log"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== STATS ===================== -->
+  <div class="view" id="view-stats">
+
+    <section class="panel">
+      <div class="panel-label">PERIOD</div>
+      <div class="toggle-group" id="stats-period-toggle">
+        <button class="toggle-btn active" data-period="thisMonth">This month</button>
+        <button class="toggle-btn" data-period="lastMonth">Last month</button>
+        <button class="toggle-btn" data-period="ytd">Year to date</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">WORK RATIO</div>
+      <div class="panel-sub">Hours logged as a % of what each person is scheduled to work (vacation excluded, shift changes respected). The line marks 100%.</div>
+      <div id="ratio-rows"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">HOURS TREND</div>
+      <div class="panel-sub">Weekly totals over the last 8 weeks, with a 4-week forecast (dashed) based on each person's current trend.</div>
+      <div id="trend-chart"></div>
+      <div class="legend" id="trend-legend"></div>
+      <div id="trend-forecast" style="margin-top:12px;"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">DAY-OF-WEEK HEATMAP</div>
+      <div class="panel-sub">Average hours logged per weekday over the last 8 weeks — spot coverage gaps.</div>
+      <div id="heatmap-rows"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== MOOD TRACKER ===================== -->
+  <div class="view" id="view-mood">
+
+    <div class="nudge-card" id="mood-nudge-card">
+      <span class="nudge-text" id="mood-nudge-text">You haven't checked in today — 10 seconds, three taps.</span>
+      <button class="nudge-dismiss" id="mood-nudge-dismiss" title="Dismiss for today">✕</button>
+    </div>
+
+    <section class="panel">
+      <div class="panel-label">TODAY'S CHECK-IN</div>
+      <div class="person-tabs" id="mood-person-tabs"></div>
+
+      <div class="rating-block">
+        <div class="rating-head"><span class="rating-title">Energy</span><span class="rating-hint">wiped out → wired</span></div>
+        <div class="rating-scale" id="scale-energy"></div>
+      </div>
+      <div class="rating-block">
+        <div class="rating-head"><span class="rating-title">Stress</span><span class="rating-hint">calm → frazzled</span></div>
+        <div class="rating-scale" id="scale-stress"></div>
+      </div>
+      <div class="rating-block">
+        <div class="rating-head"><span class="rating-title">Happiness</span><span class="rating-hint">rough → great</span></div>
+        <div class="rating-scale" id="scale-happiness"></div>
+      </div>
+
+      <div class="mood-result">
+        <div class="mood-score" id="mood-score">—</div>
+        <div class="mood-label-wrap">
+          <div class="mood-word" id="mood-word">Rate all three to see today's mood</div>
+          <div class="mood-formula">avg(energy, happiness, 6 − stress)</div>
+        </div>
+      </div>
+      <button class="add-btn" id="save-checkin-btn">Save today's check-in</button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">LOG A PAST DAY</div>
+      <div class="panel-sub">Forgot yesterday? Log it here — same three ratings, any date.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Person</label>
+          <select id="backfill-person">
+            <option>Luigi</option><option>Juan</option><option>Sergio</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Date</label>
+          <input type="date" id="backfill-date" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Energy</label>
+          <div class="mini-scale" id="mini-energy"></div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Stress</label>
+          <div class="mini-scale" id="mini-stress"></div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Happiness</label>
+          <div class="mini-scale" id="mini-happiness"></div>
+        </div>
+      </div>
+      <button class="add-btn" id="backfill-btn">Save day</button>
+    </section>
+
+    <section class="panel">
+      <div class="month-header-row">
+        <div class="month-title" id="cal-month-title">—</div>
+        <div class="month-avg">Shown avg: <b id="cal-avg">—</b> / 5</div>
+      </div>
+      <div class="panel-sub">Pick one, two, or all three — the calendar averages whoever's selected, per day.</div>
+      <div class="filter-chips" id="filter-chips"></div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:#E0503C"></span> Rough</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#F2A03D"></span> Okay</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#8FBF5C"></span> Good</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#2E9B5C"></span> Great</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#F0EBE1"></span> No check-in</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#F2A03D; border-radius:50%; width:6px; height:6px;"></span> Holiday</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">LAST 7 DAYS · WHOLE CREW</div>
+      <div id="strip-list"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== CREW AWARDS ===================== -->
+  <div class="view" id="view-awards">
+    <section class="panel">
+      <div class="panel-label">🫠 WEEKLY GRIND</div>
+      <div class="panel-sub">Hours punched since Monday. Whoever's ahead is the one who needs a hobby. 🪦 counts the weeks they lost their life to the job.</div>
+      <div id="weekly-race-rows"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-label">⏰ ARRIVAL BOARD</div>
+      <div class="panel-sub">Average clock-in time over the last 30 days. Earliest gets the worm; latest gets the snail.</div>
+      <div id="arrival-board-rows"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-label">THIS MONTH'S SUPERLATIVES</div>
+      <div class="panel-sub">Computed automatically from everyone's check-ins and punches.</div>
+      <div id="awards-list"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-label">CHECK-IN STREAKS</div>
+      <div class="panel-sub">Consecutive days logged, ending today.</div>
+      <div id="streak-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="leader-header-row">
+        <div class="panel-label">RECAP</div>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="toggle-recap-week">This week</button>
+          <button class="toggle-btn" id="toggle-recap-month">This month</button>
+          <button class="toggle-btn" id="toggle-recap-ytd">Year to date</button>
+        </div>
+      </div>
+      <div class="panel-sub" id="recap-range">Last 7 days</div>
+      <div class="recap-grid" id="recap-grid"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">FACT OF THE DAY</div>
+      <div class="fact-card">
+        <span class="fact-icon">💡</span>
+        <span class="fact-text" id="fact-of-day">Loading…</span>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button class="archive-btn" id="fact-like-btn">👍 0</button>
+        <button class="archive-btn" id="fact-dislike-btn">👎 0</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="leader-header-row">
+        <div class="panel-label">RANDOM ANIMAL</div>
+        <button class="archive-btn" id="animal-pic-retry-btn">🔄 New photo</button>
+      </div>
+      <div class="animal-pic-wrap" id="animal-pic-wrap">
+        <span class="empty-state">loading photo…</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== BADGES ===================== -->
+  <div class="view" id="view-badges">
+    <section class="panel">
+      <div class="panel-label">BADGE CASE</div>
+      <div class="panel-sub">Real milestones from actually using the app — no hunting, no hidden mechanism. Use it and these unlock themselves.</div>
+      <div id="badge-case-rows"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-label">ALL BADGES</div>
+      <div class="panel-sub">Dots show who on the crew has earned each one.</div>
+      <div id="badge-list"></div>
+    </section>
+  </div>
+
+  <!-- ===================== WAGER BOARD (football bets + goals) ===================== -->
+  <div class="view" id="view-bets">
+
+    <section class="panel">
+      <div class="panel-label">BEER SCOREBOARD</div>
+      <div class="panel-sub">One round of beers per exact score guessed correctly. The World Cup winner guess alone is worth a full day of free beers.</div>
+      <div id="bets-scoreboard"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">MATCHES · GUESS THE SCORE</div>
+      <div class="panel-sub">Not just who wins — the exact final score. Enter the real result once the match ends.</div>
+      <div id="match-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="leader-header-row">
+        <div class="panel-label" id="add-bet-label">ADD A MATCH</div>
+        <button class="archive-btn" id="bet-type-toggle-btn">📝 Switch to custom bet</button>
+      </div>
+      <div class="panel-sub" id="add-bet-sub">For the semis, final, or anything else worth a bet.</div>
+
+      <div id="football-add-fields">
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Team A</label>
+            <input type="text" id="new-match-teamA" placeholder="e.g. France" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">Team B</label>
+            <input type="text" id="new-match-teamB" placeholder="e.g. Morocco" />
+          </div>
+        </div>
+      </div>
+
+      <div id="custom-add-fields" style="display:none;">
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">Question</label>
+            <input type="text" id="new-match-question" placeholder="e.g. How many wins will the Lakers get this month?" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Date / round</label>
+          <input type="text" id="new-match-date" placeholder="e.g. Semifinal, Jul 15" />
+        </div>
+      </div>
+      <button class="add-btn" id="add-match-btn">Add bet</button>
+    </section>
+
+    <div id="wc-winner-toggle-row" style="margin-bottom:16px;">
+      <button class="archive-btn" id="wc-winner-toggle-btn">Show World Cup winner guess</button>
+    </div>
+
+    <div id="wc-winner-wrap">
+      <section class="panel">
+        <div class="panel-label">GUESS THE WORLD CUP WINNER</div>
+        <div class="panel-sub">Worth a full day of free beers. Enter the real winner once the final's done.</div>
+        <div id="winner-predict"></div>
+        <div class="form-row" style="margin-top:6px;">
+          <div class="form-field">
+            <label class="form-label">Actual World Cup winner</label>
+            <input type="text" id="actual-winner-input" placeholder="Enter once the final is played" />
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="add-btn" id="save-winner-btn">Save winner</button>
+          <button class="archive-btn" id="archive-winner-btn">Archive &amp; hide</button>
+        </div>
+        <div id="winner-result" style="margin-top:10px; font-size:13px; color: var(--muted);"></div>
+        <div id="world-cup-history" style="margin-top:14px;"></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-label">🎯 GOAL TRACKER</div>
+      <div class="panel-sub">Shared goals like "Audit 2026" — everyone logs their own progress, percentages update automatically.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Category</label>
+          <input type="text" id="goal-category-input" list="goal-category-datalist" placeholder="e.g. Certifications" />
+          <datalist id="goal-category-datalist"></datalist>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Type</label>
+          <select id="goal-mode-input">
+            <option value="completion">Completion (x of y)</option>
+            <option value="target">Target number</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="flex: 2 1 200px;">
+          <label class="form-label">Goal name</label>
+          <input type="text" id="goal-name-input" placeholder="e.g. Audit 2026" />
+        </div>
+        <div class="form-field">
+          <label class="form-label">Unit (optional)</label>
+          <input type="text" id="goal-unit-input" placeholder="e.g. hours, $, reps" />
+        </div>
+      </div>
+      <button class="add-btn" id="add-goal-btn">Add goal</button>
+
+      <div class="panel-label" style="margin-top:20px; margin-bottom:8px;">📊 PROGRESS CHART</div>
+      <div id="goal-chart"></div>
+
+      <div style="display:flex; gap:8px; margin-top:18px;">
+        <button class="archive-btn" id="goal-expand-all-btn">Expand all</button>
+        <button class="archive-btn" id="goal-collapse-all-btn">Collapse all</button>
+      </div>
+      <div id="goal-list" style="margin-top:10px;"></div>
+      <button class="archive-btn" id="toggle-archived-goals-btn" style="margin-top:10px;">Show archived goals</button>
+      <div id="archived-goal-list" style="margin-top:12px; display:none;"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== PATCH NOTES ===================== -->
+  <div class="view" id="view-patchnotes">
+    <section class="panel">
+      <div class="panel-label">📋 PATCH NOTES</div>
+      <div class="panel-sub">A running log of what's changed in The Punch Board, so nobody has to wonder "wait, when did that show up?"</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Category</label>
+          <input type="text" id="patch-category-input" list="patch-category-datalist" placeholder="e.g. Features" />
+          <datalist id="patch-category-datalist"></datalist>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Date</label>
+          <input type="date" id="patch-date-input" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="flex: 1 1 100%;">
+          <label class="form-label">Title</label>
+          <input type="text" id="patch-title-input" placeholder="e.g. Added holiday tracking" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="flex: 1 1 100%;">
+          <label class="form-label">Details</label>
+          <textarea id="patch-details-input" rows="3" placeholder="What changed, one line per item is fine" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="add-btn" id="add-patch-btn">Add patch note</button>
+        <button class="archive-btn" id="cancel-patch-edit-btn" style="display:none;">Cancel edit</button>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:16px;">
+        <button class="archive-btn" id="patch-expand-all-btn">Expand all</button>
+        <button class="archive-btn" id="patch-collapse-all-btn">Collapse all</button>
+      </div>
+      <div id="patch-notes-list" style="margin-top:10px;"></div>
+    </section>
+  </div>
+
+  <!-- ===================== SUPPORT (tickets + suggestions) ===================== -->
+  <div class="view" id="view-support">
+
+    <section class="panel">
+      <div class="leader-header-row">
+        <div class="panel-label">🎫 TICKET LOG</div>
+        <button class="archive-btn" id="ticket-log-toggle-btn">Show</button>
+      </div>
+      <div class="panel-sub">Hit a problem and figured it out? Log it here — question stays visible, tap it to reveal how it got solved.</div>
+      <div id="ticket-log-content" style="display:none;">
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Category</label>
+            <input type="text" id="ticket-category-input" list="ticket-category-datalist" placeholder="e.g. Login issues" />
+            <datalist id="ticket-category-datalist"></datalist>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Who</label>
+            <select id="ticket-person-input">
+              <option value="Luigi">Luigi</option>
+              <option value="Juan">Juan</option>
+              <option value="Sergio">Sergio</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">The issue</label>
+            <input type="text" id="ticket-issue-input" placeholder="e.g. Clock-in button froze on Sergio's phone" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">How it was solved</label>
+            <textarea id="ticket-resolution-input" rows="3" placeholder="What fixed it" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="add-btn" id="add-ticket-btn">Log ticket</button>
+          <button class="archive-btn" id="cancel-ticket-edit-btn" style="display:none;">Cancel edit</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:16px;">
+          <button class="archive-btn" id="ticket-expand-all-btn">Expand all</button>
+          <button class="archive-btn" id="ticket-collapse-all-btn">Collapse all</button>
+        </div>
+        <div id="ticket-list" style="margin-top:10px;"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-label">💡 SUGGESTION BOX</div>
+      <div class="panel-sub">Got an idea for a new feature? Drop it here — nobody has to wonder if it got lost in a group chat.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Who</label>
+          <select id="suggestion-person-input">
+            <option value="Luigi">Luigi</option>
+            <option value="Juan">Juan</option>
+            <option value="Sergio">Sergio</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="flex: 1 1 100%;">
+          <label class="form-label">Suggestion</label>
+          <textarea id="suggestion-text-input" rows="2" placeholder="e.g. Add a dark mode" style="border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-size:14px; font-family:'IBM Plex Sans',sans-serif; width:100%; resize:vertical;"></textarea>
+        </div>
+      </div>
+      <button class="add-btn" id="add-suggestion-btn">Add suggestion</button>
+      <div id="suggestion-list" style="margin-top:16px;"></div>
+      <button class="archive-btn" id="toggle-done-suggestions-btn" style="margin-top:10px;">Show done suggestions</button>
+      <div id="done-suggestion-list" style="margin-top:12px; display:none;"></div>
+    </section>
+
+  </div>
+
+  <!-- ===================== MISC ===================== -->
+  <div class="view" id="view-vault">
+
+    <div id="vault-unlocked">
+
+      <section class="panel" id="smart-table-panel">
+        <style>
+          .st-card { border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:#fff; }
+          .st-row { display:flex; align-items:center; gap:10px; }
+          .st-rank { width:28px; text-align:center; font-size:18px; }
+          .st-name { flex:1; font-weight:600; font-size:16px; }
+          .st-score { font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:24px; text-align:right; }
+          .st-delta { font-size:11px; color:var(--muted); text-align:right; font-family:'IBM Plex Mono',monospace; }
+          .st-btns { display:flex; gap:8px; margin-top:8px; }
+          .st-btns button { flex:1; padding:9px 6px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); font:inherit; font-weight:600; cursor:pointer; }
+          .st-btns .st-good { background:#2E9B5C; border-color:#2E9B5C; color:#fff; }
+          .st-btns .st-bad { background:#E0503C; border-color:#E0503C; color:#fff; }
+          .st-log { font-size:13px; padding:6px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; }
+          .st-log b.d { width:40px; flex:0 0 40px; }
+        </style>
+        <div class="panel-label">🧠 SMART TABLE</div>
+        <div class="panel-sub">Everyone starts at 100. Do something smart, gain points. Do something stupid, lose them. Scoreline at the end.</div>
+        <div id="st-board"></div>
+        <div class="form-row" style="margin-top:6px;">
+          <div class="form-field" style="flex: 3 1 160px;">
+            <label class="form-label">What happened? (optional)</label>
+            <input type="text" id="st-reason" maxlength="120" placeholder="e.g. Fixed the Excel bug in 5 minutes" />
+          </div>
+          <div class="form-field" style="flex: 1 1 70px;">
+            <label class="form-label">Points</label>
+            <input type="number" id="st-amount" value="10" min="1" inputmode="numeric" />
+          </div>
+        </div>
+        <div class="panel-sub" style="margin-top:4px;">Set the reason and points, then tap 🧠 or 🤡 on the person.</div>
+        <div id="st-log" style="margin-top:10px;"></div>
+        <div style="display:flex; gap:8px; margin-top:10px; align-items:center;">
+          <button class="archive-btn" id="st-undo">Undo last</button>
+          <button class="archive-btn" id="st-reset">Reset all</button>
+          <span id="st-status" style="font-size:11px; color:var(--muted);"></span>
+        </div>
+      </section>
+
+      <section class="panel" id="mono-panel">
+        <style>
+          .mn-card { border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:#fff; }
+          .mn-row { display:flex; align-items:center; gap:10px; }
+          .mn-rank { width:28px; text-align:center; font-size:18px; }
+          .mn-name { flex:1; font-weight:600; font-size:16px; }
+          .mn-wins { font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:24px; text-align:right; }
+          .mn-meta { font-size:11px; color:var(--muted); text-align:right; font-family:'IBM Plex Mono',monospace; }
+          .mn-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+          .mn-btns button { flex:1; min-width:90px; padding:11px 6px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); font:inherit; font-weight:600; cursor:pointer; }
+          .mn-log { font-size:13px; padding:6px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; }
+        </style>
+        <div class="panel-label">🎩 MONOPOLY LEADERBOARD</div>
+        <div class="panel-sub">After each game, tap the winner. The leaderboard updates itself.</div>
+        <div id="mn-board"></div>
+        <div class="panel-label" style="margin-top:14px;">WHO WON THE GAME?</div>
+        <div class="mn-btns" id="mn-win-btns"></div>
+        <div class="form-row" style="margin-top:8px;">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">Note (optional)</label>
+            <input type="text" id="mn-note" maxlength="120" placeholder="e.g. Bankrupted everyone with hotels on Boardwalk" />
+          </div>
+        </div>
+        <div id="mn-log" style="margin-top:10px;"></div>
+        <div style="display:flex; gap:8px; margin-top:10px; align-items:center;">
+          <button class="archive-btn" id="mn-undo">Undo last</button>
+          <button class="archive-btn" id="mn-reset">Reset all</button>
+          <span id="mn-status" style="font-size:11px; color:var(--muted);"></span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-label">🧪 ALPHA: DECISION ROULETTE</div>
+        <div class="panel-sub">Experimental — nothing here is saved yet, this is just a quick spin. Type a decision, hit spin, one of the options gets picked.</div>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">Who's in the spin?</label>
+            <div id="roulette-people-checks" style="display:flex; gap:16px; flex-wrap:wrap; margin-top:2px;"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex: 2 1 200px;">
+            <label class="form-label">Add a custom option (optional)</label>
+            <input type="text" id="roulette-custom-input" placeholder="e.g. Pizza" />
+          </div>
+        </div>
+        <button class="archive-btn" id="roulette-add-custom-btn">Add option</button>
+        <div id="roulette-custom-list" style="margin-top:10px;"></div>
+        <div class="form-row" style="margin-top:12px;">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">What's the decision?</label>
+            <input type="text" id="roulette-question-input" placeholder="e.g. Who takes out the trash tonight" />
+          </div>
+        </div>
+        <button class="add-btn" id="roulette-spin-btn">Spin</button>
+        <div id="roulette-result" style="margin-top:16px;"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-label">🧪 ALPHA: QUICK POLL</div>
+        <div class="panel-sub">Experimental — for quick crew decisions. Everyone can vote, results update live.</div>
+        <div class="form-row">
+          <div class="form-field" style="flex: 1 1 100%;">
+            <label class="form-label">Question</label>
+            <input type="text" id="poll-question-input" placeholder="e.g. Pizza or tacos Friday?" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Option 1</label>
+            <input type="text" id="poll-option-0-input" placeholder="e.g. Pizza" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">Option 2</label>
+            <input type="text" id="poll-option-1-input" placeholder="e.g. Tacos" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Option 3 (optional)</label>
+            <input type="text" id="poll-option-2-input" placeholder="" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">Option 4 (optional)</label>
+            <input type="text" id="poll-option-3-input" placeholder="" />
+          </div>
+        </div>
+        <button class="add-btn" id="add-poll-btn">Create poll</button>
+        <div id="poll-list" style="margin-top:16px;"></div>
+        <button class="archive-btn" id="toggle-closed-polls-btn" style="margin-top:10px;">Show closed polls</button>
+        <div id="closed-poll-list" style="margin-top:12px; display:none;"></div>
+      </section>
+
+    </div>
+
+  </div>
+
+  <footer id="app-footer">Shared with Luigi, Juan &amp; Sergio · data is stored in a shared Google Sheet · <a href="dev.html" style="color:inherit; text-decoration:underline;">dev</a></footer>
+</div>
+
+<div class="identity-modal" id="identity-modal">
+  <div class="identity-card">
+    <div class="identity-eyebrow">QUICK QUESTION</div>
+    <div class="identity-title">Who's opening this?</div>
+    <div class="identity-sub">We'll remember it on this device — pre-fills forms and highlights your card on Time Clock. Everyone's controls stay visible either way.</div>
+    <div class="identity-options" id="identity-options"></div>
+  </div>
+</div>
+
+<div class="identity-modal" id="theme-modal">
+  <div class="identity-card">
+    <div class="identity-eyebrow">APPEARANCE</div>
+    <div class="identity-title">Pick a theme</div>
+    <div class="identity-sub">Just for you, on this device — everyone can pick their own without affecting anyone else.</div>
+    <div class="identity-options" id="theme-options"></div>
+    <button class="egg-close-btn" id="theme-modal-close-btn" style="margin-top:14px; width:100%;">Close</button>
+  </div>
+</div>
+
+<div class="egg-modal" id="badge-modal">
+  <div class="egg-card">
+    <div class="egg-eyebrow" id="badge-eyebrow">🏅 BADGE EARNED</div>
+    <div class="egg-title" id="badge-title">Nice work.</div>
+    <div class="egg-message" id="badge-message">—</div>
+    <button class="egg-close-btn" id="badge-close-btn">Close</button>
+  </div>
+</div>
+
+<button class="missing-days-ribbon left" id="missing-days-ribbon-left" style="display:none;"></button>
+<button class="missing-days-ribbon right" id="missing-days-ribbon-right" style="display:none;"></button>
+
+<script>
+/* SMART TABLE — self-contained; uses core.js apiGetAll / apiSetSetting (setting key "smartTable"). */
+window.addEventListener('DOMContentLoaded', function () {
+  const KEY = 'smartTable', BASE = 100;
+  const STP = ['Luigi', 'Sergio', 'Juan', 'Marcos'];
+  const STC = { Luigi: '#D97757', Sergio: '#8B6F47', Juan: '#4A7C7C', Marcos: '#7A5C9E' };
+  let st = { log: [] };
+  const $ = id => document.getElementById(id);
+  const status = t => { $('st-status').textContent = t; };
+  const parse = sett => { try { const v = JSON.parse((sett || {})[KEY] || '{}'); return Array.isArray(v.log) ? v : { log: [] }; } catch (e) { return { log: [] }; } };
+  const persist = async () => {
+    try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {}
+    await apiSetSetting(KEY, JSON.stringify(st));
+  };
+  const pull = async () => { st = parse((await apiGetAll()).settings); };
+  function scores() { const s = {}; STP.forEach(p => s[p] = BASE); st.log.forEach(e => { if (s[e.p] !== undefined) s[e.p] += e.d; }); return s; }
+  function render() {
+    const s = scores();
+    const ranked = [...STP].sort((a, b) => s[b] - s[a]);
+    const medals = ['🥇', '🥈', '🥉', '💩'];
+    const board = $('st-board'); board.innerHTML = '';
+    ranked.forEach((p, i) => {
+      const diff = s[p] - BASE;
+      const c = document.createElement('div'); c.className = 'st-card';
+      c.innerHTML = '<div class="st-row"><div class="st-rank">' + (st.log.length ? medals[i] : '•') + '</div>'
+        + '<div class="st-name" style="color:' + STC[p] + '">' + p + '</div>'
+        + '<div><div class="st-score">' + s[p] + '</div><div class="st-delta">' + (diff >= 0 ? '+' : '') + diff + '</div></div></div>'
+        + '<div class="st-btns"><button class="st-good">🧠 Smart</button><button class="st-bad">🤡 Stupid</button></div>';
+      c.querySelector('.st-good').onclick = () => add(p, 1);
+      c.querySelector('.st-bad').onclick = () => add(p, -1);
+      board.appendChild(c);
+    });
+    const log = $('st-log'); log.innerHTML = '';
+    [...st.log].reverse().slice(0, 30).forEach(e => {
+      const r = document.createElement('div'); r.className = 'st-log';
+      const when = new Date(e.t).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const b = document.createElement('b'); b.className = 'd'; b.style.color = e.d >= 0 ? '#2E9B5C' : '#E0503C'; b.textContent = (e.d >= 0 ? '+' : '') + e.d;
+      const t = document.createElement('span'); t.textContent = e.p + (e.r ? ' — ' + e.r : '') + '  · ' + when;
+      r.appendChild(b); r.appendChild(t); log.appendChild(r);
+    });
+  }
+  async function add(p, sign) {
+    const amt = Math.max(1, Math.abs(parseInt($('st-amount').value, 10) || 10));
+    const e = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), p: p, d: sign * amt, r: $('st-reason').value.trim(), t: Date.now() };
+    status('saving…');
+    try { await pull(); } catch (x) {}
+    st.log.push(e); render(); $('st-reason').value = '';
+    try { await persist(); status('saved ✓'); } catch (x) { status('could not save — try again'); }
+  }
+  async function refresh() {
+    try { await pull(); status(''); }
+    catch (e) { try { st = JSON.parse(localStorage.getItem(KEY) || '{"log":[]}'); } catch (x) {} status('offline — last saved copy'); }
+    render();
+  }
+  $('st-undo').onclick = async () => {
+    if (!st.log.length || !confirm('Remove the last entry?')) return;
+    try { await pull(); } catch (e) {}
+    st.log.pop(); render(); await persist(); status('undone ✓');
+  };
+  $('st-reset').onclick = async () => {
+    if (!confirm('Reset everyone to 100 and clear the log?')) return;
+    st = { log: [] }; render(); await persist(); status('reset ✓');
+  };
+  $('tab-vault').addEventListener('click', refresh);
+  render();
+  setTimeout(refresh, 1500);
+});
+</script>
+<script>
+/* MONOPOLY LEADERBOARD — self-contained; setting key "monopolyScores" via core.js apiGetAll / apiSetSetting. */
+window.addEventListener('DOMContentLoaded', function () {
+  const KEY = 'monopolyScores';
+  const MP = ['Marcos', 'Sergio', 'Luigi'];
+  const MC = { Marcos: '#7A5C9E', Sergio: '#8B6F47', Luigi: '#D97757' };
+  let mn = { games: [] };
+  const $ = id => document.getElementById(id);
+  const status = t => { $('mn-status').textContent = t; };
+  const parse = sett => { try { const v = JSON.parse((sett || {})[KEY] || '{}'); return Array.isArray(v.games) ? v : { games: [] }; } catch (e) { return { games: [] }; } };
+  const persist = async () => {
+    try { localStorage.setItem(KEY, JSON.stringify(mn)); } catch (e) {}
+    await apiSetSetting(KEY, JSON.stringify(mn));
+  };
+  const pull = async () => { mn = parse((await apiGetAll()).settings); };
+  function render() {
+    const wins = {}; MP.forEach(p => wins[p] = 0);
+    mn.games.forEach(g => { if (wins[g.w] !== undefined) wins[g.w]++; });
+    const total = mn.games.length;
+    const ranked = [...MP].sort((a, b) => wins[b] - wins[a]);
+    const max = Math.max(1, ...Object.values(wins));
+    const board = $('mn-board'); board.innerHTML = '';
+    ranked.forEach((p, i) => {
+      const pct = total ? Math.round(wins[p] / total * 100) : 0;
+      const c = document.createElement('div'); c.className = 'mn-card';
+      c.innerHTML = '<div class="mn-row"><div class="mn-rank">' + (total ? ['🥇', '🥈', '🥉'][i] : '•') + '</div>'
+        + '<div class="mn-name" style="color:' + MC[p] + '">' + p + '</div>'
+        + '<div><div class="mn-wins">' + wins[p] + (wins[p] === 1 ? ' win' : ' wins') + '</div><div class="mn-meta">' + pct + '% of ' + total + ' games</div></div></div>'
+        + '<div class="bar-track" style="margin-top:8px;"><div class="bar-fill" style="width:' + (wins[p] / max * 100) + '%;background:' + MC[p] + '"></div></div>';
+      board.appendChild(c);
+    });
+    const btns = $('mn-win-btns');
+    if (!btns.children.length) {
+      MP.forEach(p => {
+        const b = document.createElement('button');
+        b.textContent = '🏆 ' + p; b.style.borderColor = MC[p];
+        b.onclick = () => addWin(p);
+        btns.appendChild(b);
+      });
+    }
+    const log = $('mn-log'); log.innerHTML = '';
+    [...mn.games].reverse().slice(0, 30).forEach((g, idx) => {
+      const r = document.createElement('div'); r.className = 'mn-log';
+      const when = new Date(g.t).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const n = mn.games.length - idx;
+      r.textContent = '#' + n + '  ' + g.w + ' won' + (g.n ? ' — ' + g.n : '') + '  · ' + when;
+      log.appendChild(r);
+    });
+  }
+  async function addWin(p) {
+    const g = { id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), w: p, n: $('mn-note').value.trim(), t: Date.now() };
+    status('saving…');
+    try { await pull(); } catch (x) {}
+    mn.games.push(g); render(); $('mn-note').value = '';
+    try { await persist(); status('saved ✓'); } catch (x) { status('could not save — try again'); }
+  }
+  async function refresh() {
+    try { await pull(); status(''); }
+    catch (e) { try { mn = JSON.parse(localStorage.getItem(KEY) || '{"games":[]}'); } catch (x) {} status('offline — last saved copy'); }
+    render();
+  }
+  $('mn-undo').onclick = async () => {
+    if (!mn.games.length || !confirm('Remove the last game?')) return;
+    try { await pull(); } catch (e) {}
+    mn.games.pop(); render(); await persist(); status('undone ✓');
+  };
+  $('mn-reset').onclick = async () => {
+    if (!confirm('Clear all Monopoly results?')) return;
+    mn = { games: [] }; render(); await persist(); status('reset ✓');
+  };
+  $('tab-vault').addEventListener('click', refresh);
+  render();
+  setTimeout(refresh, 1500);
+});
+</script>
+<script src="core.js" defer></script>
+<script src="timeclock-mood.js" defer></script>
+<script src="awards-wager.js" defer></script>
+<script src="misc-support.js" defer></script>
+<script src="stats.js" defer></script>
+<script src="goals-eggs2-init.js" defer></script>
+</body>
+</html>
